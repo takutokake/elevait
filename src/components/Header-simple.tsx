@@ -53,12 +53,12 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
       </div>
       
       <div className="hidden lg:flex gap-2">
-        <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
+        <Link href="/login" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
           <span className="truncate">Log In</span>
-        </button>
-        <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
+        </Link>
+        <Link href="/signup" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
           <span className="truncate">Get Started</span>
-        </button>
+        </Link>
       </div>
       
       <div className="lg:hidden">
@@ -89,12 +89,12 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
               Blog
             </Link>
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button className="flex items-center justify-center rounded-full h-10 px-4 bg-[#f0f3f5] dark:bg-gray-700 text-[#333333] dark:text-white text-sm font-medium transition-colors">
+              <Link href="/login" className="flex items-center justify-center rounded-full h-10 px-4 bg-[#f0f3f5] dark:bg-gray-700 text-[#333333] dark:text-white text-sm font-medium transition-colors">
                 Log In
-              </button>
-              <button className="flex items-center justify-center rounded-full h-10 px-5 bg-[#f97316] hover:bg-[#f97316]/90 text-white text-sm font-bold transition-colors">
+              </Link>
+              <Link href="/signup" className="flex items-center justify-center rounded-full h-10 px-5 bg-[#f97316] hover:bg-[#f97316]/90 text-white text-sm font-bold transition-colors">
                 Get Started
-              </button>
+              </Link>
             </div>
           </nav>
         </div>
