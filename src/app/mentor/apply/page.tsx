@@ -215,129 +215,184 @@ export default function CoachApplicationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    // Updated: Match hero section background with radial gradient
+    <div className="min-h-screen bg-white dark:bg-[#101c22] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(40%_100%_at_50%_0%,rgba(139,92,246,0.1),rgba(255,255,255,0))] dark:bg-[radial-gradient(40%_100%_at_50%_0%,rgba(139,92,246,0.2),rgba(16,28,34,0))]"></div>
+      
       <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center text-2xl font-bold">
+        {/* Updated: Enhanced Card styling with better shadows and borders */}
+        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-2xl">
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-2xl font-black tracking-tight text-[#333333] dark:text-white">
               Apply to be a Coach
             </CardTitle>
+            <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
+              Share your expertise and help students unlock their potential
+            </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {/* Updated: Enhanced error display */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
+              {/* Updated: Enhanced form fields with proper labels and styling */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="fullName" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    required
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="Enter your full name"
+                  />
                 </div>
-              )}
 
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <div className="space-y-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 text-[#333333]/60 dark:text-[#F5F5F5]/60"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  readOnly
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="currentTitle" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Current Title
+                  </label>
+                  <input
+                    id="currentTitle"
+                    name="currentTitle"
+                    type="text"
+                    required
+                    value={formData.currentTitle}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="Senior Product Manager"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="currentCompany" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Current Company
+                  </label>
+                  <input
+                    id="currentCompany"
+                    name="currentCompany"
+                    type="text"
+                    required
+                    value={formData.currentCompany}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="Company name"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="currentTitle" className="block text-sm font-medium text-gray-700">
-                  Current Title
-                </label>
-                <input
-                  id="currentTitle"
-                  name="currentTitle"
-                  type="text"
-                  required
-                  value={formData.currentTitle}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="yearsExperience" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Years of Experience
+                  </label>
+                  <input
+                    id="yearsExperience"
+                    name="yearsExperience"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={formData.yearsExperience}
+                    onChange={handleNumberChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="priceDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Price per Session <span className="text-[#f97316]">($)</span>
+                  </label>
+                  <input
+                    id="priceDollars"
+                    name="priceDollars"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={formData.priceDollars}
+                    onChange={handleNumberChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="150"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="currentCompany" className="block text-sm font-medium text-gray-700">
-                  Current Company
-                </label>
-                <input
-                  id="currentCompany"
-                  name="currentCompany"
-                  type="text"
-                  required
-                  value={formData.currentCompany}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="linkedinUrl" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    LinkedIn URL
+                  </label>
+                  <input
+                    id="linkedinUrl"
+                    name="linkedinUrl"
+                    type="url"
+                    required
+                    value={formData.linkedinUrl}
+                    onChange={handleInputChange}
+                    placeholder="https://linkedin.com/in/yourprofile"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="alumniSchool" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Alumni School
+                  </label>
+                  <input
+                    id="alumniSchool"
+                    name="alumniSchool"
+                    type="text"
+                    required
+                    value={formData.alumniSchool}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="University name"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="yearsExperience" className="block text-sm font-medium text-gray-700">
-                  Years of Experience
-                </label>
-                <input
-                  id="yearsExperience"
-                  name="yearsExperience"
-                  type="number"
-                  min="0"
-                  step="1"
-                  required
-                  value={formData.yearsExperience}
-                  onChange={handleNumberChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="linkedinUrl" className="block text-sm font-medium text-gray-700">
-                  LinkedIn URL
-                </label>
-                <input
-                  id="linkedinUrl"
-                  name="linkedinUrl"
-                  type="url"
-                  required
-                  value={formData.linkedinUrl}
-                  onChange={handleInputChange}
-                  placeholder="https://linkedin.com/in/yourprofile"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
                   Focus Areas
                 </label>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {focusAreaOptions.map((area) => (
-                    <div key={area} className="flex items-center">
+                    <div key={area} className="flex items-center space-x-3">
                       <input
                         id={area}
                         type="checkbox"
                         checked={formData.focusAreas.includes(area)}
                         onChange={(e) => handleFocusAreaChange(area, e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
                       />
-                      <label htmlFor={area} className="ml-3 block text-sm text-gray-700">
+                      <label htmlFor={area} className="text-sm text-[#333333] dark:text-white">
                         {area}
                       </label>
                     </div>
@@ -345,41 +400,9 @@ export default function CoachApplicationPage() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="priceDollars" className="block text-sm font-medium text-gray-700">
-                  Price per Session ($)
-                </label>
-                <input
-                  id="priceDollars"
-                  name="priceDollars"
-                  type="number"
-                  min="0"
-                  step="1"
-                  required
-                  value={formData.priceDollars}
-                  onChange={handleNumberChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="alumniSchool" className="block text-sm font-medium text-gray-700">
-                  Alumni School
-                </label>
-                <input
-                  id="alumniSchool"
-                  name="alumniSchool"
-                  type="text"
-                  required
-                  value={formData.alumniSchool}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="avatar" className="block text-sm font-medium text-gray-700">
-                  Profile Picture (Optional)
+              <div className="space-y-2">
+                <label htmlFor="avatar" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Profile Picture <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Optional)</span>
                 </label>
                 <input
                   id="avatar"
@@ -387,14 +410,14 @@ export default function CoachApplicationPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-[#0ea5e9] file:text-white hover:file:bg-[#0ea5e9]/90"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full"
+                className="w-full bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white font-semibold h-11 rounded-lg transition-colors"
               >
                 {submitting ? 'Submitting Application...' : 'Submit Application'}
               </Button>
