@@ -1,12 +1,13 @@
 import Link from "next/link";
 
 interface CoachProfileProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function CoachProfile({ params }: CoachProfileProps) {
+export default async function CoachProfile({ params }: CoachProfileProps) {
+  const { id } = await params;
   // Mock coach data - in real app this would come from API
   const coach = {
     name: "Sarah Chen",
