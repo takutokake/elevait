@@ -83,19 +83,14 @@ export default function SignUpPage() {
     try {
       const supabase = getSupabaseBrowserClient()
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback?role=${roleChoice === 'coach' ? 'mentor' : 'student'}`
-        }
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       })
-
-      if (error) {
-        setError(error.message)
-      }
     } catch (err) {
       setError('An unexpected error occurred')
-    } finally {
       setGoogleLoading(false)
     }
   }
