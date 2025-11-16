@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Layout from "../../components/Layout";
+// import Layout from "../../components/Layout";
 
 export default function AboutPage() {
   return (
-    <Layout variant="landing">
+    <div>
       {/* Hero Section */}
       <div className="relative isolate overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-24">
         <div className="absolute inset-0 -z-10 h-full w-full bg-white dark:bg-[#101c22]"></div>
@@ -149,6 +149,6 @@ export default function AboutPage() {
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   )
 }
