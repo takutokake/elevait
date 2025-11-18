@@ -3,14 +3,19 @@ import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 
 export async function GET() {
   try {
+    console.log('[API /me] Starting request...')
     const supabase = getSupabaseServerClient()
     const { user } = await getSessionUser()
 
+    console.log('[API /me] User:', user ? `ID: ${user.id}, Email: ${user.email}` : 'No user')
+
     if (!user) {
+      console.log('[API /me] No user session found, returning null')
       return NextResponse.json({ user: null })
     }
 
     // Fetch profile
+    console.log('[API /me] Fetching profile for user:', user.id)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -18,10 +23,24 @@ export async function GET() {
       .single()
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError)
+      console.error('[API /me] Profile fetch error:', profileError)
+      console.error('[API /me] Profile error details:', {
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint
+      })
+    } else {
+      console.log('[API /me] Profile found:', {
+        id: profile?.id,
+        role: profile?.role,
+        desired_role: profile?.desired_role,
+        onboarding_complete: profile?.onboarding_complete
+      })
     }
 
     // Fetch student row (if any)
+    console.log('[API /me] Fetching student data...')
     const { data: student, error: studentError } = await supabase
       .from('students')
       .select('*')
@@ -29,10 +48,15 @@ export async function GET() {
       .single()
 
     if (studentError && studentError.code !== 'PGRST116') {
-      console.error('Student fetch error:', studentError)
+      console.error('[API /me] Student fetch error:', studentError)
+    } else if (student) {
+      console.log('[API /me] Student data found')
+    } else {
+      console.log('[API /me] No student data (expected for mentors)')
     }
 
     // Fetch mentor row (if any)
+    console.log('[API /me] Fetching mentor data...')
     const { data: mentor, error: mentorError } = await supabase
       .from('mentors')
       .select('*')
@@ -40,28 +64,45 @@ export async function GET() {
       .single()
 
     if (mentorError && mentorError.code !== 'PGRST116') {
-      console.error('Mentor fetch error:', mentorError)
+      console.error('[API /me] Mentor fetch error:', mentorError)
+    } else if (mentor) {
+      console.log('[API /me] Mentor data found')
+    } else {
+      console.log('[API /me] No mentor data (expected for students)')
     }
 
     // Fetch bookings (basic select where user is either student_id or mentor_id)
+    console.log('[API /me] Fetching bookings...')
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select('*')
       .or(`student_id.eq.${user.id},mentor_id.eq.${user.id}`)
 
     if (bookingsError) {
-      console.error('Bookings fetch error:', bookingsError)
+      console.error('[API /me] Bookings fetch error:', bookingsError)
+    } else {
+      console.log('[API /me] Bookings found:', bookings?.length || 0)
     }
 
-    return NextResponse.json({
+    const responseData = {
       user,
       profile: profile || null,
       student: student || null,
       mentor: mentor || null,
       bookings: bookings || []
+    }
+
+    console.log('[API /me] Returning response:', {
+      hasUser: !!responseData.user,
+      hasProfile: !!responseData.profile,
+      hasStudent: !!responseData.student,
+      hasMentor: !!responseData.mentor,
+      bookingsCount: responseData.bookings.length
     })
+
+    return NextResponse.json(responseData)
   } catch (error) {
-    console.error('API /me error:', error)
+    console.error('[API /me] Unexpected error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

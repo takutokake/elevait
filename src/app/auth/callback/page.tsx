@@ -11,13 +11,15 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log('[Callback] Starting auth callback...')
         const supabase = getSupabaseBrowserClient()
         
         // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser()
+        console.log('[Callback] User from Supabase:', user ? `User ID: ${user.id}` : 'No user', userError)
         
         if (userError || !user) {
-          console.error('No user found:', userError)
+          console.error('[Callback] No user found:', userError)
           // Short delay before redirecting to login
           setTimeout(() => {
             router.replace('/login')
@@ -26,10 +28,19 @@ export default function AuthCallbackPage() {
         }
 
         // Call /api/me to get user profile data
-        const response = await fetch('/api/me')
+        console.log('[Callback] Fetching /api/me...')
+        const response = await fetch('/api/me', {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+        
+        console.log('[Callback] /api/me response status:', response.status)
         
         if (!response.ok) {
-          console.error('Failed to fetch user data')
+          const errorText = await response.text()
+          console.error('[Callback] Failed to fetch user data:', response.status, errorText)
           setTimeout(() => {
             router.replace('/login')
           }, 1000)
@@ -37,10 +48,48 @@ export default function AuthCallbackPage() {
         }
 
         const data = await response.json()
-        const { profile } = data
+        console.log('[Callback] /api/me data:', {
+          hasUser: !!data.user,
+          hasProfile: !!data.profile,
+          profile: data.profile,
+          hasStudent: !!data.student,
+          hasMentor: !!data.mentor
+        })
+        const { profile, user: apiUser } = data
 
         if (!profile) {
-          console.error('No profile found')
+          console.error('[Callback] No profile found in response:', data)
+          
+          // If profile doesn't exist but user does, try to create it
+          if (apiUser) {
+            console.log('[Callback] User exists but no profile - attempting to create profile')
+            
+            // Get desired_role from user metadata
+            const desiredRole = user?.user_metadata?.desired_role || 'student'
+            console.log('[Callback] Creating profile with desired_role:', desiredRole)
+            
+            // Create profile via API
+            const createProfileResponse = await fetch('/api/profile/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                full_name: user?.user_metadata?.full_name || '',
+                desired_role: desiredRole
+              })
+            })
+            
+            if (createProfileResponse.ok) {
+              console.log('[Callback] Profile created, retrying /api/me')
+              // Retry the callback after a short delay
+              setTimeout(() => {
+                window.location.reload()
+              }, 500)
+              return
+            } else {
+              console.error('[Callback] Failed to create profile')
+            }
+          }
+          
           setTimeout(() => {
             router.replace('/login')
           }, 1000)
@@ -48,26 +97,37 @@ export default function AuthCallbackPage() {
         }
 
         // Routing logic based on onboarding status
+        console.log('[Callback] Routing decision:', {
+          onboarding_complete: profile.onboarding_complete,
+          desired_role: profile.desired_role,
+          role: profile.role
+        })
+        
         if (!profile.onboarding_complete) {
           if (profile.desired_role === 'mentor') {
+            console.log('[Callback] Redirecting to /onboarding/mentor')
             router.replace('/onboarding/mentor')
           } else {
+            console.log('[Callback] Redirecting to /onboarding/student')
             router.replace('/onboarding/student')
           }
         } else {
           // Onboarding complete - route to appropriate dashboard
           if (profile.role === 'mentor') {
-            router.replace('/coach/dashboard')
+            console.log('[Callback] Redirecting to /mentor/dashboard')
+            router.replace('/mentor/dashboard')
           } else {
+            console.log('[Callback] Redirecting to /student/dashboard')
             router.replace('/student/dashboard')
           }
         }
       } catch (error) {
-        console.error('Auth callback error:', error)
+        console.error('[Callback] Auth callback error:', error)
         setTimeout(() => {
           router.replace('/login')
         }, 1000)
       } finally {
+        console.log('[Callback] Callback complete, setting loading to false')
         setLoading(false)
       }
     }
