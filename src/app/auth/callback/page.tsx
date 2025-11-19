@@ -53,9 +53,10 @@ export default function AuthCallbackPage() {
           hasProfile: !!data.profile,
           profile: data.profile,
           hasStudent: !!data.student,
-          hasMentor: !!data.mentor
+          hasMentor: !!data.mentor,
+          mentorStatus: data.mentor?.is_active
         })
-        const { profile, user: apiUser } = data
+        const { profile, user: apiUser, mentor } = data
 
         if (!profile) {
           console.error('[Callback] No profile found in response:', data)
@@ -96,11 +97,37 @@ export default function AuthCallbackPage() {
           return
         }
 
+        // Auto-complete onboarding for approved mentors
+        const needsAutoComplete = !profile.onboarding_complete &&
+                                  mentor?.is_active === true &&
+                                  profile.role === 'mentor'
+        
+        if (needsAutoComplete) {
+          console.log('[Callback] Auto-completing onboarding for approved mentor')
+          try {
+            const completeResponse = await fetch('/api/profile/complete-onboarding', {
+              method: 'POST',
+              credentials: 'include'
+            })
+            
+            if (completeResponse.ok) {
+              console.log('[Callback] Onboarding auto-completed successfully')
+              // Update local profile object
+              profile.onboarding_complete = true
+            } else {
+              console.error('[Callback] Failed to auto-complete onboarding')
+            }
+          } catch (err) {
+            console.error('[Callback] Error auto-completing onboarding:', err)
+          }
+        }
+
         // Routing logic based on onboarding status
         console.log('[Callback] Routing decision:', {
           onboarding_complete: profile.onboarding_complete,
           desired_role: profile.desired_role,
-          role: profile.role
+          role: profile.role,
+          needsAutoComplete
         })
         
         if (!profile.onboarding_complete) {

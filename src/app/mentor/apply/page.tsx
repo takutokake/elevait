@@ -23,6 +23,7 @@ export default function CoachApplicationPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [hasPendingApplication, setHasPendingApplication] = useState(false)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const router = useRouter()
 
@@ -35,7 +36,13 @@ export default function CoachApplicationPage() {
     linkedinUrl: '',
     focusAreas: [] as string[],
     priceDollars: 100,
-    alumniSchool: ''
+    alumniSchool: '',
+    shortDescription: '',
+    aboutMe: '',
+    jobTypeTags: [] as string[],
+    specialties: [] as string[],
+    keyAchievements: ['', '', ''],
+    successfulCompanies: [] as string[]
   })
 
   const focusAreaOptions = [
@@ -48,31 +55,60 @@ export default function CoachApplicationPage() {
     'Others'
   ]
 
+  const jobTypeOptions = [
+    'product_management',
+    'program_manager',
+    'product_designer',
+    'software_engineer',
+    'data_analyst',
+    'business_analyst'
+  ]
+
+  const specialtyOptions = [
+    'growth',
+    'leadership',
+    'analytics',
+    'experiments',
+    'design',
+    'strategy',
+    'technical',
+    'user_research',
+    'roadmapping',
+    'stakeholder_management'
+  ]
+
   // Check if user is logged in and get profile
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const response = await fetch('/api/debug-user')
+        // Use /api/me to get proper user data including application status
+        const response = await fetch('/api/me')
         const data = await response.json()
         
         if (data.user) {
           setUser(data.user)
           setFormData(prev => ({
             ...prev,
-            email: data.user.email
+            email: data.user.email,
+            fullName: data.profile?.full_name || ''
           }))
 
-          // For now, we'll simulate getting profile data
-          // In a real app, you'd have a separate API endpoint for this
-          const mockProfile = {
-            full_name: data.user.user_metadata?.full_name || '',
-            role: 'student' // This would come from your profiles table
+          // Set profile data
+          if (data.profile) {
+            setProfile({
+              full_name: data.profile.full_name || '',
+              role: data.profile.role || 'student'
+            })
           }
-          setProfile(mockProfile)
-          setFormData(prev => ({
-            ...prev,
-            fullName: mockProfile.full_name
-          }))
+
+          // Check if user has a pending or approved application
+          if (data.mentorApplication) {
+            const status = data.mentorApplication.status
+            // If status is 'pending' or 'approved', block access to form
+            if (status === 'pending' || status === 'approved') {
+              setHasPendingApplication(true)
+            }
+          }
         }
       } catch (err) {
         console.error('Error checking user:', err)
@@ -107,6 +143,47 @@ export default function CoachApplicationPage() {
     }))
   }
 
+  const handleJobTypeChange = (type: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      jobTypeTags: checked
+        ? [...prev.jobTypeTags, type]
+        : prev.jobTypeTags.filter(t => t !== type)
+    }))
+  }
+
+  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: checked
+        ? [...prev.specialties, specialty]
+        : prev.specialties.filter(s => s !== specialty)
+    }))
+  }
+
+  const handleAchievementChange = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      keyAchievements: prev.keyAchievements.map((ach, i) => i === index ? value : ach)
+    }))
+  }
+
+  const handleCompanyAdd = (company: string) => {
+    if (company.trim() && !formData.successfulCompanies.includes(company.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        successfulCompanies: [...prev.successfulCompanies, company.trim()]
+      }))
+    }
+  }
+
+  const handleCompanyRemove = (company: string) => {
+    setFormData(prev => ({
+      ...prev,
+      successfulCompanies: prev.successfulCompanies.filter(c => c !== company)
+    }))
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -129,7 +206,7 @@ export default function CoachApplicationPage() {
         avatarUrl = await uploadAvatar(avatarFile, user.id)
       }
 
-      // Submit coach application
+      // Submit coach application with all new fields
       const response = await fetch('/api/onboarding/coach-application', {
         method: 'POST',
         headers: {
@@ -143,6 +220,12 @@ export default function CoachApplicationPage() {
           focusAreas: formData.focusAreas,
           priceDollars: formData.priceDollars,
           alumniSchool: formData.alumniSchool,
+          shortDescription: formData.shortDescription,
+          aboutMe: formData.aboutMe,
+          jobTypeTags: formData.jobTypeTags,
+          specialties: formData.specialties,
+          keyAchievements: formData.keyAchievements.filter(a => a.trim()),
+          successfulCompanies: formData.successfulCompanies,
           avatarUrl: avatarUrl || undefined
         })
       })
@@ -152,8 +235,9 @@ export default function CoachApplicationPage() {
         throw new Error(errorData.error || 'Failed to submit application')
       }
 
-      // Success
+      // Success - set both success and pending application state
       setSuccess(true)
+      setHasPendingApplication(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
@@ -190,8 +274,23 @@ export default function CoachApplicationPage() {
         <Card className="max-w-md w-full">
           <CardContent className="text-center py-8">
             <p className="text-lg mb-4">You are already an approved coach.</p>
-            <Button onClick={() => router.push('/')}>
+            <Button onClick={() => router.push('/mentor/dashboard')}>
               Go to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (hasPendingApplication) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="text-center py-8">
+            <p className="text-lg mb-4">Your coach application is still pending or not yet approved. We'll contact you soon.</p>
+            <Button onClick={() => router.push('/')}>
+              Go to Home
             </Button>
           </CardContent>
         </Card>
@@ -378,6 +477,68 @@ export default function CoachApplicationPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label htmlFor="shortDescription" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Short Description <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(100 characters max)</span>
+                </label>
+                <input
+                  id="shortDescription"
+                  name="shortDescription"
+                  type="text"
+                  required
+                  maxLength={100}
+                  value={formData.shortDescription}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="Ex: Helping PMs break into FAANG companies"
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  {formData.shortDescription.length}/100 characters
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="aboutMe" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  About Me <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(500 characters max)</span>
+                </label>
+                <textarea
+                  id="aboutMe"
+                  name="aboutMe"
+                  required
+                  maxLength={500}
+                  rows={4}
+                  value={formData.aboutMe}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors resize-none"
+                  placeholder="Tell us about your background, experience, and what makes you a great mentor..."
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  {formData.aboutMe.length}/500 characters
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Job Type Tags <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Select all that apply)</span>
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {jobTypeOptions.map((type) => (
+                    <div key={type} className="flex items-center space-x-3">
+                      <input
+                        id={type}
+                        type="checkbox"
+                        checked={formData.jobTypeTags.includes(type)}
+                        onChange={(e) => handleJobTypeChange(type, e.target.checked)}
+                        className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
+                      />
+                      <label htmlFor={type} className="text-sm text-[#333333] dark:text-white capitalize">
+                        {type.replace(/_/g, ' ')}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-[#333333] dark:text-white">
                   Focus Areas
@@ -398,6 +559,96 @@ export default function CoachApplicationPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Specialties <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Select your areas of expertise)</span>
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {specialtyOptions.map((specialty) => (
+                    <div key={specialty} className="flex items-center space-x-3">
+                      <input
+                        id={`specialty-${specialty}`}
+                        type="checkbox"
+                        checked={formData.specialties.includes(specialty)}
+                        onChange={(e) => handleSpecialtyChange(specialty, e.target.checked)}
+                        className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
+                      />
+                      <label htmlFor={`specialty-${specialty}`} className="text-sm text-[#333333] dark:text-white capitalize">
+                        {specialty.replace(/_/g, ' ')}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Key Achievements <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(List 3 major accomplishments)</span>
+                </label>
+                {formData.keyAchievements.map((achievement, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    value={achievement}
+                    onChange={(e) => handleAchievementChange(index, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder={`Achievement ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Successful Companies <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Companies where you helped students get offers/interviews)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="companyInput"
+                    placeholder="Add company name"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const input = e.target as HTMLInputElement
+                        handleCompanyAdd(input.value)
+                        input.value = ''
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('companyInput') as HTMLInputElement
+                      handleCompanyAdd(input.value)
+                      input.value = ''
+                    }}
+                    className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.successfulCompanies.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.successfulCompanies.map((company, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm"
+                      >
+                        {company}
+                        <button
+                          type="button"
+                          onClick={() => handleCompanyRemove(company)}
+                          className="hover:text-green-900 dark:hover:text-green-200"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

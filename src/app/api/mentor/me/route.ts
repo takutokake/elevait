@@ -28,9 +28,64 @@ export async function GET() {
       )
     }
 
+    // If not a mentor, check application status
     if (profile.role !== 'mentor') {
+      // Check for mentor application
+      const { data: application, error: appError } = await supabase
+        .from('mentor_applications')
+        .select('id, status, created_at, reviewed_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (appError && appError.code !== 'PGRST116') {
+        console.error('Application fetch error:', appError)
+      }
+
+      // Return specific status based on application state
+      if (!application) {
+        return NextResponse.json(
+          { 
+            error: 'not_applied',
+            message: 'You have not applied to become a coach yet.',
+            action: 'apply'
+          },
+          { status: 403 }
+        )
+      }
+
+      if (application.status === 'pending') {
+        return NextResponse.json(
+          { 
+            error: 'pending',
+            message: 'Your coach application is pending review.',
+            applicationDate: application.created_at,
+            action: 'wait'
+          },
+          { status: 403 }
+        )
+      }
+
+      if (application.status === 'rejected') {
+        return NextResponse.json(
+          { 
+            error: 'rejected',
+            message: 'Your coach application was not approved. Please contact support for more information.',
+            reviewedDate: application.reviewed_at,
+            action: 'contact'
+          },
+          { status: 403 }
+        )
+      }
+
+      // Generic not a mentor response
       return NextResponse.json(
-        { error: 'Not a mentor' },
+        { 
+          error: 'not_mentor',
+          message: 'You do not have mentor access.',
+          action: 'apply'
+        },
         { status: 403 }
       )
     }

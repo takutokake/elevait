@@ -127,9 +127,11 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
   // Landing page header
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
-      <Logo size="lg" href="/" />
+      <div className="flex items-center flex-1">
+        <Logo size="lg" href="/" />
+      </div>
       
-      <div className="hidden lg:flex flex-1 justify-center items-center">
+      <div className="hidden lg:flex items-center justify-center flex-1">
         <nav className="flex items-center gap-8">
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
             Coaches
@@ -146,7 +148,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
         </nav>
       </div>
       
-      <div className="hidden lg:flex gap-2">
+      <div className="hidden lg:flex gap-2 flex-1 justify-end">
         {isLoading ? (
           <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
         ) : currentUser ? (

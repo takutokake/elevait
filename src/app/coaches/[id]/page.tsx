@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getMentorById, getMentorInitials, formatHourlyRate } from "@/lib/mentorHelpers";
 
 interface CoachProfileProps {
   params: Promise<{
@@ -8,31 +10,26 @@ interface CoachProfileProps {
 
 export default async function CoachProfile({ params }: CoachProfileProps) {
   const { id } = await params;
-  // Mock coach data - in real app this would come from API
-  const coach = {
-    name: "Sarah Chen",
-    title: "Senior Product Manager",
-    company: "Ex-Google, Meta",
-    rating: "4.9",
-    reviews: "120",
-    price: "$150",
-    bio: "I'm a seasoned Product Manager with over 8 years of experience at top tech companies including Google and Meta. I specialize in B2B SaaS products and have helped launch multiple products that reached millions of users. My passion is helping aspiring PMs break into the field and current PMs level up their careers.",
-    experience: "8+ years",
-    specialties: ["B2B SaaS", "Growth PM", "Product Strategy", "User Research"],
-    achievements: [
-      "Led product team that increased user engagement by 40%",
-      "Launched 3 successful products with 10M+ users",
-      "Mentored 50+ product managers",
-      "Speaker at ProductCon 2023"
-    ],
-    availability: [
-      { day: "Monday", time: "2:00 PM - 3:00 PM", available: true },
-      { day: "Tuesday", time: "10:00 AM - 11:00 AM", available: true },
-      { day: "Wednesday", time: "4:00 PM - 5:00 PM", available: false },
-      { day: "Thursday", time: "1:00 PM - 2:00 PM", available: true },
-      { day: "Friday", time: "3:00 PM - 4:00 PM", available: true }
-    ]
-  };
+  const mentor = await getMentorById(id);
+
+  if (!mentor) {
+    notFound();
+  }
+
+  const initials = getMentorInitials(mentor.full_name);
+  const hourlyRate = formatHourlyRate(mentor.mentor_data?.price_cents);
+  const rating = 0; // Will be implemented later
+  const reviewCount = 0; // Will be implemented later
+  
+  // Get all the new fields from mentor_data
+  const shortDescription = mentor.mentor_data?.short_description;
+  const aboutMe = mentor.mentor_data?.about_me;
+  const jobTypeTags = mentor.mentor_data?.job_type_tags || [];
+  const specialties = mentor.mentor_data?.specialties || mentor.mentor_data?.focus_areas || [];
+  const keyAchievements = mentor.mentor_data?.key_achievements || [];
+  const successfulCompanies = mentor.mentor_data?.successful_companies || [];
+  const yearsExperience = mentor.mentor_data?.years_experience;
+  const totalSessions = 0; // Will be implemented later
 
   return (
     <div className="font-display bg-[#F8FAFC] dark:bg-[#020617] text-[#0f172a] dark:text-[#F8FAFC]">
@@ -66,7 +63,7 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-              <span className="text-[#0f172a] dark:text-[#F8FAFC]">{coach.name}</span>
+              <span className="text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Coach"}</span>
             </nav>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -75,25 +72,33 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                 {/* Coach Header */}
                 <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
                   <div className="flex flex-col sm:flex-row gap-6">
-                    <div className="w-32 h-32 bg-gradient-to-br from-[#0ea5e9]/20 to-[#8b5cf6]/20 rounded-full flex items-center justify-center text-4xl font-bold text-[#0ea5e9] flex-shrink-0">
-                      SC
-                    </div>
+                    {mentor.avatar_url ? (
+                      <img
+                        src={mentor.avatar_url}
+                        alt={mentor.full_name || "Coach"}
+                        className="w-32 h-32 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-32 h-32 bg-gradient-to-br from-[#0ea5e9]/20 to-[#8b5cf6]/20 rounded-full flex items-center justify-center text-4xl font-bold text-[#0ea5e9] flex-shrink-0">
+                        {initials}
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
-                          <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{coach.name}</h1>
-                          <p className="text-lg text-[#0ea5e9] font-semibold mt-1">{coach.title}</p>
-                          <p className="text-[#64748B] dark:text-[#94A3B8] mt-1">{coach.company}</p>
+                          <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Anonymous Coach"}</h1>
+                          {mentor.mentor_data?.current_title && (
+                            <p className="text-lg text-[#0ea5e9] font-semibold mt-1">{mentor.mentor_data.current_title}</p>
+                          )}
+                          {mentor.mentor_data?.current_company && (
+                            <p className="text-[#64748B] dark:text-[#94A3B8] mt-1">{mentor.mentor_data.current_company}</p>
+                          )}
+                          {shortDescription && (
+                            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mt-2 italic">"{shortDescription}"</p>
+                          )}
                           <div className="flex items-center gap-4 mt-3">
-                            <div className="flex items-center gap-1">
-                              <svg className="w-5 h-5 text-[#f97316] fill-current" viewBox="0 0 24 24">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                              </svg>
-                              <span className="font-semibold">{coach.rating}</span>
-                              <span className="text-[#64748B] dark:text-[#94A3B8]">({coach.reviews} reviews)</span>
-                            </div>
                             <div className="text-2xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">
-                              {coach.price}<span className="text-base font-normal text-[#64748B] dark:text-[#94A3B8]">/session</span>
+                              {hourlyRate}{mentor.mentor_data?.price_cents && <span className="text-base font-normal text-[#64748B] dark:text-[#94A3B8]">/hr</span>}
                             </div>
                           </div>
                         </div>
@@ -102,38 +107,85 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                   </div>
                 </div>
 
-                {/* About Section */}
-                <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">About</h2>
-                  <p className="text-[#64748B] dark:text-[#94A3B8] leading-relaxed">{coach.bio}</p>
-                </div>
+                {/* About Section - use about_me */}
+                {aboutMe && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">About Me</h2>
+                    <p className="text-[#64748B] dark:text-[#94A3B8] leading-relaxed">{aboutMe}</p>
+                  </div>
+                )}
+
+                {/* Job Type Tags */}
+                {jobTypeTags.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Role Types</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {jobTypeTags.map((tag, index) => (
+                        <span key={index} className="bg-purple-100/80 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-full text-sm font-medium capitalize">
+                          {tag.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Specialties */}
-                <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Specialties</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {coach.specialties.map((specialty, index) => (
-                      <span key={index} className="bg-[#0ea5e9]/10 text-[#0ea5e9] px-3 py-1.5 rounded-full text-sm font-medium">
-                        {specialty}
-                      </span>
-                    ))}
+                {specialties.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Specialties</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {specialties.map((specialty, index) => (
+                        <span key={index} className="bg-[#0ea5e9]/10 text-[#0ea5e9] px-3 py-1.5 rounded-full text-sm font-medium capitalize">
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Key Achievements */}
-                <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Key Achievements</h2>
-                  <ul className="space-y-3">
-                    {coach.achievements.map((achievement, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-[#10b981] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-[#64748B] dark:text-[#94A3B8]">{achievement}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {keyAchievements.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Key Achievements</h2>
+                    <ul className="space-y-3">
+                      {keyAchievements.map((achievement, index) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-[#10b981] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-[#64748B] dark:text-[#94A3B8]">{achievement}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Successful Companies */}
+                {successfulCompanies.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Interview Success</h2>
+                    <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-3">
+                      Helped students get offers or interviews at:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {successfulCompanies.map((company, index) => (
+                        <span key={index} className="bg-green-100/80 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-full text-sm font-medium">
+                          {company}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Experience Info */}
+                {yearsExperience && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Experience</h2>
+                    <p className="text-[#64748B] dark:text-[#94A3B8]">
+                      {yearsExperience} years of professional experience in product management and mentoring.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Sidebar */}
@@ -142,47 +194,35 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                 <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
                   <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Quick Stats</h3>
                   <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-[#64748B] dark:text-[#94A3B8]">Experience</span>
-                      <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{coach.experience}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#64748B] dark:text-[#94A3B8]">Sessions</span>
-                      <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{coach.reviews}+</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#64748B] dark:text-[#94A3B8]">Response Time</span>
-                      <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">&lt; 2 hours</span>
-                    </div>
+                    {yearsExperience && (
+                      <div className="flex justify-between">
+                        <span className="text-[#64748B] dark:text-[#94A3B8]">Experience</span>
+                        <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{yearsExperience} years</span>
+                      </div>
+                    )}
+                    {totalSessions > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-[#64748B] dark:text-[#94A3B8]">Sessions</span>
+                        <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{totalSessions}+</span>
+                      </div>
+                    )}
+                    {mentor.mentor_data?.alumni_school && (
+                      <div className="flex justify-between">
+                        <span className="text-[#64748B] dark:text-[#94A3B8]">Alumni</span>
+                        <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.mentor_data.alumni_school}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Availability */}
                 <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Available Times</h3>
-                  <div className="space-y-3">
-                    {coach.availability.map((slot, index) => (
-                      <div key={index} className={`flex items-center justify-between p-3 rounded-lg border ${
-                        slot.available 
-                          ? 'border-[#10b981]/20 bg-[#10b981]/5' 
-                          : 'border-[#E2E8F0] dark:border-[#1e293b] bg-[#F8FAFC] dark:bg-[#1e293b]/50'
-                      }`}>
-                        <div>
-                          <p className="font-medium text-[#0f172a] dark:text-[#F8FAFC]">{slot.day}</p>
-                          <p className="text-sm text-[#64748B] dark:text-[#94A3B8]">{slot.time}</p>
-                        </div>
-                        {slot.available ? (
-                          <button className="bg-[#0ea5e9] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
-                            Book
-                          </button>
-                        ) : (
-                          <span className="text-[#64748B] dark:text-[#94A3B8] text-sm">Booked</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button className="w-full mt-4 bg-[#0ea5e9] text-white py-3 rounded-lg font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
-                    View All Available Times
+                  <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Book a Session</h3>
+                  <p className="text-[#64748B] dark:text-[#94A3B8] mb-4 text-sm">
+                    Schedule a 1-on-1 mentoring session to discuss your career goals and get personalized guidance.
+                  </p>
+                  <button className="w-full bg-[#0ea5e9] text-white py-3 rounded-lg font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
+                    View Available Times
                   </button>
                 </div>
 
@@ -193,9 +233,16 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     <button className="w-full bg-[#0ea5e9] text-white py-3 rounded-lg font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
                       Send Message
                     </button>
-                    <button className="w-full border border-[#E2E8F0] dark:border-[#1e293b] text-[#0f172a] dark:text-[#F8FAFC] py-3 rounded-lg font-semibold hover:bg-[#F8FAFC] dark:hover:bg-[#1e293b] transition-colors">
-                      View LinkedIn
-                    </button>
+                    {mentor.mentor_data?.linkedin_url && (
+                      <a
+                        href={mentor.mentor_data.linkedin_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full border border-[#E2E8F0] dark:border-[#1e293b] text-[#0f172a] dark:text-[#F8FAFC] py-3 rounded-lg font-semibold hover:bg-[#F8FAFC] dark:hover:bg-[#1e293b] transition-colors flex items-center justify-center"
+                      >
+                        View LinkedIn
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

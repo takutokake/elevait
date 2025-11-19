@@ -19,6 +19,12 @@ export async function POST(request: NextRequest) {
       focusAreas,
       priceDollars,
       alumniSchool,
+      shortDescription,
+      aboutMe,
+      jobTypeTags,
+      specialties,
+      keyAchievements,
+      successfulCompanies,
       avatarUrl
     } = body
 
@@ -27,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseServerClient()
 
-    // Insert into mentor_applications table
+    // Insert into mentor_applications table with ALL new fields
     const { error: applicationError } = await supabase
       .from('mentor_applications')
       .insert({
@@ -39,7 +45,13 @@ export async function POST(request: NextRequest) {
         linkedin_url: linkedinUrl,
         focus_areas: focusAreas,
         price_cents: priceCents,
-        alumni_school: alumniSchool
+        alumni_school: alumniSchool,
+        short_description: shortDescription,
+        about_me: aboutMe,
+        job_type_tags: jobTypeTags,
+        specialties: specialties,
+        key_achievements: keyAchievements,
+        successful_companies: successfulCompanies
       })
 
     if (applicationError) {

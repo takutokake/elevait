@@ -84,11 +84,33 @@ export async function GET() {
       console.log('[API /me] Bookings found:', bookings?.length || 0)
     }
 
+    // Fetch mentor application status (if any)
+    console.log('[API /me] Fetching mentor application status...')
+    const { data: mentorApplication, error: applicationError } = await supabase
+      .from('mentor_applications')
+      .select('id, status, created_at, reviewed_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (applicationError && applicationError.code !== 'PGRST116') {
+      console.error('[API /me] Mentor application fetch error:', applicationError)
+    } else if (mentorApplication) {
+      console.log('[API /me] Mentor application found:', {
+        id: mentorApplication.id,
+        status: mentorApplication.status
+      })
+    } else {
+      console.log('[API /me] No mentor application found')
+    }
+
     const responseData = {
       user,
       profile: profile || null,
       student: student || null,
       mentor: mentor || null,
+      mentorApplication: mentorApplication || null,
       bookings: bookings || []
     }
 

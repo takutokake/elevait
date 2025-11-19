@@ -1,7 +1,10 @@
 import Link from "next/link";
 import Layout from "../../components/Layout";
+import CoachCard from "@/components/CoachCard";
+import { getAllMentors } from "@/lib/mentorHelpers";
 
-export default function CoachesPage() {
+export default async function CoachesPage() {
+  const mentors = await getAllMentors();
   return (
     <Layout variant="landing">
 
@@ -147,43 +150,17 @@ export default function CoachesPage() {
 
                 {/* Coach Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {[
-                    { name: "Sarah Chen", rating: "4.9", reviews: "120", price: "$150", specialties: ["B2B SaaS", "Growth PM"], avatar: "SC" },
-                    { name: "David Lee", rating: "4.8", reviews: "95", price: "$180", specialties: ["E-commerce", "Marketplaces"], avatar: "DL" },
-                    { name: "Maria Garcia", rating: "5.0", reviews: "210", price: "$200", specialties: ["AI/ML", "B2C", "Startups"], avatar: "MG" },
-                    { name: "John Smith", rating: "4.7", reviews: "88", price: "$160", specialties: ["Fintech", "Mobile"], avatar: "JS" },
-                    { name: "Emily Brown", rating: "4.9", reviews: "156", price: "$175", specialties: ["Consumer Tech", "Growth"], avatar: "EB" },
-                    { name: "Alex Johnson", rating: "4.8", reviews: "92", price: "$190", specialties: ["Enterprise", "B2B"], avatar: "AJ" }
-                  ].map((coach, index) => (
-                    <div key={index} className="group flex flex-col bg-[#ffffff] dark:bg-[#1F2937] rounded-xl border border-[#E2E8F0] dark:border-[#374151] p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-[#0ea5e9]">
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-16 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-[#0ea5e9]">
-                          {coach.avatar}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg">{coach.name}</h3>
-                          <div className="flex items-center gap-1 mt-1">
-                            <svg className="w-4 h-4 text-[#f97316] fill-current" viewBox="0 0 24 24">
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                            </svg>
-                            <p className="text-sm font-medium">{coach.rating} <span className="text-[#64748B] dark:text-[#9CA3AF] font-normal">({coach.reviews})</span></p>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-[#64748B] dark:text-[#9CA3AF] mb-4 line-clamp-2">Product Leader with 10+ years of experience at top tech companies.</p>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {coach.specialties.map((specialty, i) => (
-                          <span key={i} className="text-xs font-medium bg-sky-100/80 dark:bg-sky-900/40 text-[#0ea5e9] px-2.5 py-1 rounded-full">{specialty}</span>
-                        ))}
-                      </div>
-                      <div className="mt-auto flex justify-between items-center">
-                        <p className="text-lg font-bold">{coach.price}<span className="text-sm font-normal text-[#64748B] dark:text-[#9CA3AF]">/hr</span></p>
-                        <Link href={`/coaches/${index + 1}`} className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal transition-opacity hover:opacity-90">
-                          View Profile
-                        </Link>
-                      </div>
+                  {mentors.length > 0 ? (
+                    mentors.map((mentor) => (
+                      <CoachCard key={mentor.id} mentor={mentor} />
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-12">
+                      <p className="text-[#64748B] dark:text-[#9CA3AF] text-lg">
+                        No coaches available at the moment. Check back soon!
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* Pagination */}
