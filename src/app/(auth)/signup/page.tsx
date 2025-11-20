@@ -83,6 +83,9 @@ export default function SignUpPage() {
     try {
       const supabase = getSupabaseBrowserClient()
       
+      // Store role choice in localStorage to retrieve after OAuth redirect
+      localStorage.setItem('signup_role_choice', roleChoice === 'coach' ? 'mentor' : 'student')
+      
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -130,7 +133,7 @@ export default function SignUpPage() {
                   onClick={() => setRoleChoice('coach')}
                   className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${
                     roleChoice === 'coach'
-                      ? 'bg-[#0ea5e9] text-white shadow-sm'
+                      ? 'bg-[#f97316] text-white shadow-sm'
                       : 'text-[#333333]/80 dark:text-[#F5F5F5]/80 hover:text-[#333333] dark:hover:text-[#F5F5F5]'
                   }`}
                 >

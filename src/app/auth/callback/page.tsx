@@ -65,9 +65,10 @@ export default function AuthCallbackPage() {
           if (apiUser) {
             console.log('[Callback] User exists but no profile - attempting to create profile')
             
-            // Get desired_role from user metadata
-            const desiredRole = user?.user_metadata?.desired_role || 'student'
-            console.log('[Callback] Creating profile with desired_role:', desiredRole)
+            // Get desired_role from localStorage (for OAuth) or user metadata
+            const storedRole = localStorage.getItem('signup_role_choice')
+            const desiredRole = storedRole || user?.user_metadata?.desired_role || 'student'
+            console.log('[Callback] Creating profile with desired_role:', desiredRole, 'from:', storedRole ? 'localStorage' : 'user_metadata')
             
             // Create profile via API
             const createProfileResponse = await fetch('/api/profile/create', {
@@ -81,6 +82,8 @@ export default function AuthCallbackPage() {
             
             if (createProfileResponse.ok) {
               console.log('[Callback] Profile created, retrying /api/me')
+              // Clear localStorage after using it
+              localStorage.removeItem('signup_role_choice')
               // Retry the callback after a short delay
               setTimeout(() => {
                 window.location.reload()
@@ -123,19 +126,48 @@ export default function AuthCallbackPage() {
         }
 
         // Routing logic based on onboarding status
+        // Check localStorage for fresh signup role choice (overrides profile.desired_role)
+        const storedRole = localStorage.getItem('signup_role_choice')
+        const effectiveRole = storedRole || profile.desired_role
+        
+        // If localStorage has a different role than profile, update the profile
+        if (storedRole && storedRole !== profile.desired_role && !profile.onboarding_complete) {
+          console.log('[Callback] Updating profile.desired_role from', profile.desired_role, 'to', storedRole)
+          try {
+            const updateResponse = await fetch('/api/profile/update-role', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ desired_role: storedRole }),
+              credentials: 'include'
+            })
+            if (updateResponse.ok) {
+              console.log('[Callback] Profile desired_role updated successfully')
+              profile.desired_role = storedRole
+            }
+          } catch (err) {
+            console.error('[Callback] Failed to update profile desired_role:', err)
+          }
+        }
+        
         console.log('[Callback] Routing decision:', {
           onboarding_complete: profile.onboarding_complete,
           desired_role: profile.desired_role,
           role: profile.role,
+          storedRole,
+          effectiveRole,
           needsAutoComplete
         })
         
         if (!profile.onboarding_complete) {
-          if (profile.desired_role === 'mentor') {
-            console.log('[Callback] Redirecting to /onboarding/mentor')
-            router.replace('/onboarding/mentor')
+          if (effectiveRole === 'mentor') {
+            console.log('[Callback] Redirecting to /mentor/apply for coach signup')
+            // Clear localStorage after using it
+            localStorage.removeItem('signup_role_choice')
+            router.replace('/mentor/apply')
           } else {
             console.log('[Callback] Redirecting to /onboarding/student')
+            // Clear localStorage after using it
+            localStorage.removeItem('signup_role_choice')
             router.replace('/onboarding/student')
           }
         } else {
