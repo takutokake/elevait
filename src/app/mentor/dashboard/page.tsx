@@ -4,34 +4,49 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar } from '@/components/ui/avatar'
 
+interface Booking {
+  id: string
+  booking_start_time: string
+  booking_end_time: string
+  status: string
+  session_notes?: string
+}
+
 interface MentorData {
   user: any
   profile: any
   mentor: any
-  availabilitySlots: any[]
-  bookings: any[]
 }
 
 export default function MentorDashboard() {
   const [mentorData, setMentorData] = useState<MentorData | null>(null)
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchMentorData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/mentor/me')
-        if (response.ok) {
-          const data = await response.json()
+        // Fetch mentor data
+        const mentorResponse = await fetch('/api/mentor/me')
+        if (mentorResponse.ok) {
+          const data = await mentorResponse.json()
           setMentorData(data)
+
+          // Fetch bookings as mentor
+          const bookingsResponse = await fetch('/api/bookings?role=mentor')
+          if (bookingsResponse.ok) {
+            const bookingsData = await bookingsResponse.json()
+            setBookings(bookingsData.bookings || [])
+          }
         }
       } catch (error) {
-        console.error('Error fetching mentor data:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchMentorData()
+    fetchData()
   }, [])
 
   if (loading) {
@@ -63,13 +78,28 @@ export default function MentorDashboard() {
     )
   }
 
-  const { profile, mentor, bookings } = mentorData
-  const upcomingBookings = bookings.filter(booking => 
-    new Date(booking.session_time || booking.start_time) > new Date()
+  const { profile, mentor } = mentorData
+  const now = new Date()
+  
+  const pendingBookings = bookings.filter(booking => 
+    booking.status === 'pending'
   )
-  const totalEarnings = bookings
-    .filter(booking => booking.status === 'confirmed')
-    .reduce((sum, booking) => sum + (mentor.price_cents || 0), 0) / 100
+  
+  const upcomingBookings = bookings.filter(booking => 
+    new Date(booking.booking_end_time) > now && booking.status === 'confirmed'
+  )
+  
+  const completedBookings = bookings.filter(booking => 
+    booking.status === 'completed'
+  )
+  
+  // Calculate mentor earnings (80% of total, only for completed sessions with survey)
+  const totalEarnings = completedBookings
+    .reduce((sum, booking) => {
+      const duration = (new Date(booking.booking_end_time).getTime() - new Date(booking.booking_start_time).getTime()) / (1000 * 60 * 60)
+      const sessionRevenue = duration * (mentor.price_cents || 0) / 100
+      return sum + (sessionRevenue * 0.80) // Mentor gets 80%
+    }, 0)
 
   return (
     <div className="p-8 space-y-8">
@@ -104,7 +134,22 @@ export default function MentorDashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10 shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+              Pending Approval
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-black text-yellow-600 dark:text-yellow-400">
+              {pendingBookings.length}
+            </div>
+            <p className="text-xs text-yellow-700/80 dark:text-yellow-400/80 mt-1">
+              Awaiting your response
+            </p>
+          </CardContent>
+        </Card>
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
@@ -124,12 +169,12 @@ export default function MentorDashboard() {
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Total Sessions
+              Completed Sessions
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-black text-[#8b5cf6]">
-              {bookings.length}
+              {completedBookings.length}
             </div>
             <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
               All time
@@ -148,7 +193,7 @@ export default function MentorDashboard() {
               ${totalEarnings.toFixed(0)}
             </div>
             <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
-              Confirmed sessions
+              Your 80% share
             </p>
           </CardContent>
         </Card>

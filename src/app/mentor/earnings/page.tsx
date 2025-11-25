@@ -62,11 +62,19 @@ export default function MentorEarnings() {
   }
 
   const { mentor, bookings } = mentorData
-  const confirmedBookings = bookings.filter(booking => booking.status === 'confirmed')
-  const totalSessions = confirmedBookings.length
-  const totalEarningsDollars = confirmedBookings.reduce((sum, booking) => {
-    return sum + (mentor.price_cents || 0)
-  }, 0) / 100
+  
+  // Only count completed sessions (with survey submitted)
+  const completedBookings = bookings.filter(booking => booking.status === 'completed')
+  const totalSessions = completedBookings.length
+  
+  // Calculate earnings: 80% of (duration * hourly rate)
+  const totalEarningsDollars = completedBookings.reduce((sum, booking) => {
+    const startTime = new Date(booking.booking_start_time)
+    const endTime = new Date(booking.booking_end_time)
+    const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+    const sessionRevenue = durationHours * ((mentor.price_cents || 0) / 100)
+    return sum + (sessionRevenue * 0.80) // Mentor gets 80%
+  }, 0)
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -101,7 +109,7 @@ export default function MentorEarnings() {
               {totalSessions}
             </div>
             <p className="text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60">
-              Confirmed sessions completed
+              Completed sessions with survey
             </p>
           </CardContent>
         </Card>
@@ -117,7 +125,7 @@ export default function MentorEarnings() {
               ${totalEarningsDollars.toFixed(0)}
             </div>
             <p className="text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60">
-              From confirmed sessions
+              Your 80% share
             </p>
           </CardContent>
         </Card>
@@ -131,7 +139,7 @@ export default function MentorEarnings() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {confirmedBookings.length > 0 ? (
+          {completedBookings.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -148,28 +156,36 @@ export default function MentorEarnings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {confirmedBookings
-                    .sort((a, b) => new Date(b.session_time || b.start_time).getTime() - new Date(a.session_time || a.start_time).getTime())
-                    .map((booking, index) => (
-                    <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="py-3 px-4 text-[#333333] dark:text-white">
-                        {formatDateTime(booking.session_time || booking.start_time)}
-                      </td>
-                      <td className="py-3 px-4 text-[#333333] dark:text-white">
-                        {booking.student_name || 'Student Name'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-[#f97316]">
-                        ${((mentor.price_cents || 0) / 100).toFixed(0)}
-                      </td>
-                    </tr>
-                  ))}
+                  {completedBookings
+                    .sort((a, b) => new Date(b.booking_start_time).getTime() - new Date(a.booking_start_time).getTime())
+                    .map((booking, index) => {
+                      const startTime = new Date(booking.booking_start_time)
+                      const endTime = new Date(booking.booking_end_time)
+                      const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+                      const sessionRevenue = durationHours * ((mentor.price_cents || 0) / 100)
+                      const mentorEarnings = sessionRevenue * 0.80
+                      
+                      return (
+                        <tr key={index} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="py-3 px-4 text-[#333333] dark:text-white">
+                            {formatDateTime(booking.booking_start_time)}
+                          </td>
+                          <td className="py-3 px-4 text-[#333333] dark:text-white">
+                            {booking.learner_email}
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-[#f97316]">
+                            ${mentorEarnings.toFixed(0)}
+                          </td>
+                        </tr>
+                      )
+                    })}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="text-center py-8">
               <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80 mb-4">
-                No confirmed sessions yet.
+                No completed sessions yet. Complete post-session surveys to receive payment.
               </p>
               <a 
                 href="/mentor/availability" 
@@ -198,8 +214,8 @@ export default function MentorEarnings() {
                 Payout Information
               </h3>
               <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
-                Payouts are processed manually. You'll receive payment details via email after each confirmed session. 
-                For questions about payments, please contact our support team.
+                You earn 80% of each session's revenue. Payouts are processed after you complete the post-session survey. 
+                Sessions must be marked as completed before payment is issued. For questions, contact support.
               </p>
             </div>
           </div>

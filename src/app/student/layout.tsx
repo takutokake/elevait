@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
+import Header from '@/components/Header-simple'
 
 interface UserData {
   user: any
@@ -146,6 +147,9 @@ export default function StudentLayout({
   return (
     <div className="min-h-screen bg-white dark:bg-[#101c22]">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(40%_100%_at_50%_0%,rgba(139,92,246,0.1),rgba(255,255,255,0))] dark:bg-[radial-gradient(40%_100%_at_50%_0%,rgba(139,92,246,0.2),rgba(16,28,34,0))]"></div>
+      
+      {/* Header */}
+      <Header variant="dashboard" />
       
       <div className="flex">
         {/* Sidebar */}

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMentorById, getMentorInitials, formatHourlyRate } from "@/lib/mentorHelpers";
+import CoachBookingSection from "@/components/CoachBookingSection";
+import Header from "@/components/Header-simple";
 
 interface CoachProfileProps {
   params: Promise<{
@@ -35,25 +37,7 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
     <div className="font-display bg-[#F8FAFC] dark:bg-[#020617] text-[#0f172a] dark:text-[#F8FAFC]">
       <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
         {/* Header */}
-        <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#1e293b] px-4 sm:px-6 lg:px-10 py-4 bg-[#FFFFFF] dark:bg-[#0f172a] sticky top-0 z-50">
-          <div className="flex items-center gap-4">
-            <Link className="text-2xl font-bold text-[#0ea5e9]" href="/">ELEVAIT</Link>
-          </div>
-          <nav className="hidden lg:flex items-center gap-8">
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#94A3B8] transition-colors hover:text-[#0ea5e9]" href="/coaches">Coaches</Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#94A3B8] transition-colors hover:text-[#0ea5e9]" href="/jobs">Jobs</Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#94A3B8] transition-colors hover:text-[#0ea5e9]" href="/about">About</Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#94A3B8] transition-colors hover:text-[#0ea5e9]" href="/blog">Blog</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
-              Log In
-            </button>
-            <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
-              Get Started
-            </button>
-          </div>
-        </header>
+        <Header variant="landing" />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl mx-auto">
@@ -176,16 +160,6 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     </div>
                   </div>
                 )}
-
-                {/* Experience Info */}
-                {yearsExperience && (
-                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Experience</h2>
-                    <p className="text-[#64748B] dark:text-[#94A3B8]">
-                      {yearsExperience} years of professional experience in product management and mentoring.
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Sidebar */}
@@ -208,7 +182,7 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     )}
                     {mentor.mentor_data?.alumni_school && (
                       <div className="flex justify-between">
-                        <span className="text-[#64748B] dark:text-[#94A3B8]">Alumni</span>
+                        <span className="text-[#64748B] dark:text-[#94A3B8]">Current School/Alumni</span>
                         <span className="font-semibold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.mentor_data.alumni_school}</span>
                       </div>
                     )}
@@ -216,15 +190,11 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                 </div>
 
                 {/* Availability */}
-                <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Book a Session</h3>
-                  <p className="text-[#64748B] dark:text-[#94A3B8] mb-4 text-sm">
-                    Schedule a 1-on-1 mentoring session to discuss your career goals and get personalized guidance.
-                  </p>
-                  <button className="w-full bg-[#0ea5e9] text-white py-3 rounded-lg font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
-                    View Available Times
-                  </button>
-                </div>
+                <CoachBookingSection
+                  coachId={id}
+                  coachName={mentor.full_name || "Coach"}
+                  hourlyRate={hourlyRate}
+                />
 
                 {/* Contact */}
                 <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">

@@ -4,34 +4,48 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar } from '@/components/ui/avatar'
 
+interface Booking {
+  id: string
+  booking_start_time: string
+  booking_end_time: string
+  status: string
+  session_notes?: string
+}
+
 interface UserData {
   user: any
   profile: any
-  student: any
-  mentor: any
-  bookings: any[]
 }
 
 export default function StudentDashboard() {
   const [userData, setUserData] = useState<UserData | null>(null)
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/me')
-        if (response.ok) {
-          const data = await response.json()
-          setUserData(data)
+        // Fetch user data
+        const userResponse = await fetch('/api/me')
+        if (userResponse.ok) {
+          const userData = await userResponse.json()
+          setUserData(userData)
+
+          // Fetch bookings as learner
+          const bookingsResponse = await fetch('/api/bookings?role=learner')
+          if (bookingsResponse.ok) {
+            const bookingsData = await bookingsResponse.json()
+            setBookings(bookingsData.bookings || [])
+          }
         }
       } catch (error) {
-        console.error('Error fetching user data:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchUserData()
+    fetchData()
   }, [])
 
   if (loading) {
@@ -63,9 +77,15 @@ export default function StudentDashboard() {
     )
   }
 
-  const { profile, bookings } = userData
+  const { profile } = userData
+  
+  const pendingBookings = bookings.filter(booking => 
+    booking.status === 'pending'
+  )
+  
   const upcomingBookings = bookings.filter(booking => 
-    new Date(booking.session_time || booking.start_time) > new Date()
+    new Date(booking.booking_start_time) > new Date() &&
+    booking.status === 'confirmed'
   )
 
   return (
@@ -96,7 +116,22 @@ export default function StudentDashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10 shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+              Pending Approval
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-black text-yellow-600 dark:text-yellow-400">
+              {pendingBookings.length}
+            </div>
+            <p className="text-xs text-yellow-700/80 dark:text-yellow-400/80 mt-1">
+              Awaiting mentor response
+            </p>
+          </CardContent>
+        </Card>
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
@@ -199,12 +234,12 @@ export default function StudentDashboard() {
           <CardContent>
             <div className="space-y-4">
               {upcomingBookings.slice(0, 3).map((booking, index) => {
-                const sessionDate = new Date(booking.session_time || booking.start_time)
+                const sessionDate = new Date(booking.booking_start_time)
                 return (
                   <div key={index} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div>
                       <p className="font-semibold text-[#333333] dark:text-white">
-                        Session with {booking.mentor_name || 'Mentor'}
+                        Coaching Session
                       </p>
                       <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
                         {sessionDate.toLocaleDateString('en-US', { 
@@ -217,7 +252,7 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                     <div className="text-sm text-[#0ea5e9] font-medium">
-                      {booking.status || 'Confirmed'}
+                      {booking.status}
                     </div>
                   </div>
                 )

@@ -1,51 +1,89 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import AvailabilityCalendar from '@/components/AvailabilityCalendar'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { getUserTimezone } from '@/lib/dateUtils'
 
-interface MentorData {
-  user: any
-  profile: any
-  mentor: any
-  availabilitySlots: any[]
-  bookings: any[]
+interface AvailabilitySlot {
+  id: string
+  mentor_id: string
+  start_time: string
+  end_time: string
+  status: 'open' | 'booked' | 'blocked'
+  timezone: string
+  created_at: string
+  updated_at: string
 }
 
 export default function MentorAvailability() {
-  const [mentorData, setMentorData] = useState<MentorData | null>(null)
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
-  const [formData, setFormData] = useState({
-    startTime: '',
-    endTime: ''
-  })
+  const [stats, setStats] = useState({ total: 0, open: 0, booked: 0 })
 
   useEffect(() => {
-    fetchMentorData()
+    fetchAvailability()
   }, [])
 
-  const fetchMentorData = async () => {
+  const fetchAvailability = useCallback(async () => {
     try {
-      const response = await fetch('/api/mentor/me')
+      // Get current user first
+      const userResponse = await fetch('/api/me')
+      if (!userResponse.ok) {
+        toast.error('Failed to authenticate')
+        return
+      }
+      const userData = await userResponse.json()
+
+      if (!userData.user) {
+        toast.error('Please log in to view availability')
+        return
+      }
+
+      // Fetch availability for next 60 days
+      const now = new Date()
+      const futureDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
+
+      const response = await fetch(
+        `/api/availability?mentorId=${userData.user.id}&from=${now.toISOString()}&to=${futureDate.toISOString()}&status=all`
+      )
+
       if (response.ok) {
         const data = await response.json()
-        setMentorData(data)
+        setSlots(data.slots || [])
+
+        // Calculate stats
+        const total = data.slots?.length || 0
+        const open = data.slots?.filter((s: AvailabilitySlot) => s.status === 'open').length || 0
+        const booked = data.slots?.filter((s: AvailabilitySlot) => s.status === 'booked').length || 0
+        setStats({ total, open, booked })
+      } else {
+        const errorData = await response.json()
+        console.error('Failed to fetch availability:', errorData)
+        
+        if (errorData.code === 'TABLE_NOT_FOUND') {
+          toast.error('⚠️ Database not set up. Please run the migration first. See MIGRATION_INSTRUCTIONS.md', {
+            autoClose: 10000
+          })
+        } else {
+          toast.error(errorData.error || 'Failed to fetch availability')
+        }
       }
     } catch (error) {
-      console.error('Error fetching mentor data:', error)
+      console.error('Error fetching availability:', error)
+      toast.error('An error occurred while fetching availability')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreateSlot = useCallback(async (start: Date, end: Date) => {
     setSubmitting(true)
-    setMessage('')
-
     try {
       const response = await fetch('/api/availability', {
         method: 'POST',
@@ -54,51 +92,46 @@ export default function MentorAvailability() {
         },
         body: JSON.stringify({
           slots: [{
-            startTime: formData.startTime,
-            endTime: formData.endTime
-          }]
-        })
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+          }],
+          timezone: getUserTimezone(),
+        }),
       })
 
       if (response.ok) {
-        setMessage('Availability slot added successfully!')
-        setFormData({ startTime: '', endTime: '' })
-        // Refetch data to update the list
-        await fetchMentorData()
+        await fetchAvailability()
       } else {
         const errorData = await response.json()
-        setMessage(errorData.error || 'Failed to add availability slot')
+        throw new Error(errorData.error || 'Failed to create slot')
       }
-    } catch (error) {
-      console.error('Error adding availability slot:', error)
-      setMessage('An unexpected error occurred')
+    } catch (error: any) {
+      throw error
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [fetchAvailability])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }))
-  }
-
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return {
-      date: date.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      time: date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
+  const handleDeleteSlot = useCallback(async (slotId: string) => {
+    setSubmitting(true)
+    try {
+      const response = await fetch(`/api/availability?slotId=${slotId}`, {
+        method: 'DELETE',
       })
+
+      if (response.ok) {
+        await fetchAvailability()
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete slot')
+      }
+    } catch (error: any) {
+      throw error
+    } finally {
+      setSubmitting(false)
     }
-  }
+  }, [fetchAvailability])
+
 
   if (loading) {
     return (
@@ -111,147 +144,61 @@ export default function MentorAvailability() {
     )
   }
 
-  if (!mentorData) {
-    return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Unable to load availability data. Please try again.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const { availabilitySlots } = mentorData
-  const sortedSlots = availabilitySlots.sort((a, b) => 
-    new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-  )
 
   return (
     <div className="p-8 space-y-8">
+      <ToastContainer position="top-right" autoClose={3000} />
+      
       <div>
         <h1 className="text-3xl font-black tracking-tight text-[#333333] dark:text-white mb-2">
-          Availability
+          Availability Management
         </h1>
         <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
-          Manage your available time slots for coaching sessions
+          Manage your coaching availability with 30-minute time slots
         </p>
       </div>
 
-      {/* Add New Slot Form */}
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-black text-[#333333] dark:text-white">
-            Add New Availability Slot
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {message && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${
-              message.includes('successfully') 
-                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
-                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-            }`}>
-              {message}
-            </div>
-          )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Total Slots
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-[#333333] dark:text-white">{stats.total}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Available
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.open}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Booked
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.booked}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label htmlFor="startTime" className="block text-sm font-medium text-[#333333] dark:text-white">
-                  Start Date & Time
-                </label>
-                <input
-                  id="startTime"
-                  name="startTime"
-                  type="datetime-local"
-                  required
-                  value={formData.startTime}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="endTime" className="block text-sm font-medium text-[#333333] dark:text-white">
-                  End Date & Time
-                </label>
-                <input
-                  id="endTime"
-                  name="endTime"
-                  type="datetime-local"
-                  required
-                  value={formData.endTime}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white font-semibold h-11 rounded-lg transition-colors"
-            >
-              {submitting ? 'Adding Slot...' : 'Add Availability Slot'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Existing Slots */}
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-black text-[#333333] dark:text-white">
-            Your Availability Slots ({sortedSlots.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {sortedSlots.length > 0 ? (
-            <div className="space-y-4">
-              {sortedSlots.map((slot, index) => {
-                const startDateTime = formatDateTime(slot.start_time)
-                const endDateTime = formatDateTime(slot.end_time)
-                const isBooked = slot.is_booked
-
-                return (
-                  <div key={index} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <div>
-                      <p className="font-semibold text-[#333333] dark:text-white">
-                        {startDateTime.date} • {startDateTime.time} - {endDateTime.time}
-                      </p>
-                      <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
-                        Duration: {Math.round((new Date(slot.end_time).getTime() - new Date(slot.start_time).getTime()) / (1000 * 60))} minutes
-                      </p>
-                    </div>
-                    <Badge 
-                      className={isBooked 
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' 
-                        : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                      }
-                    >
-                      {isBooked ? 'Booked' : 'Available'}
-                    </Badge>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80 mb-4">
-                No availability slots added yet.
-              </p>
-              <p className="text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60">
-                Add your first availability slot above to start accepting bookings.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Calendar */}
+      <AvailabilityCalendar
+        slots={slots}
+        onCreateSlot={handleCreateSlot}
+        onDeleteSlot={handleDeleteSlot}
+        isLoading={submitting}
+      />
     </div>
   )
 }
