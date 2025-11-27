@@ -23,8 +23,9 @@ export async function POST(request: NextRequest) {
       aboutMe,
       jobTypeTags,
       specialties,
-      keyAchievements,
       successfulCompanies,
+      companiesGotOffers,
+      companiesInterviewed,
       avatarUrl
     } = body
 
@@ -50,8 +51,9 @@ export async function POST(request: NextRequest) {
         about_me: aboutMe,
         job_type_tags: jobTypeTags,
         specialties: specialties,
-        key_achievements: keyAchievements,
-        successful_companies: successfulCompanies
+        successful_companies: successfulCompanies,
+        companies_got_offers: companiesGotOffers,
+        companies_interviewed: companiesInterviewed
       })
 
     if (applicationError) {

@@ -14,6 +14,7 @@ export default function SignUpPage() {
     email: '',
     password: ''
   })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,6 +24,12 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    if (!acceptedTerms) {
+      setError('You must accept the Terms of Service and Privacy Policy to continue')
+      setLoading(false)
+      return
+    }
 
     try {
       const supabase = getSupabaseBrowserClient()
@@ -79,6 +86,12 @@ export default function SignUpPage() {
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true)
     setError('')
+
+    if (!acceptedTerms) {
+      setError('You must accept the Terms of Service and Privacy Policy to continue')
+      setGoogleLoading(false)
+      return
+    }
 
     try {
       const supabase = getSupabaseBrowserClient()
@@ -237,6 +250,27 @@ export default function SignUpPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                   placeholder="Create a password"
                 />
+              </div>
+
+              {/* Terms and Conditions Checkbox */}
+              <div className="flex items-start gap-3">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-[#0ea5e9] focus:ring-[#0ea5e9] cursor-pointer"
+                />
+                <label htmlFor="terms" className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80 cursor-pointer">
+                  I have read and agree to the{' '}
+                  <Link href="/terms" target="_blank" className="text-[#0ea5e9] font-semibold hover:underline">
+                    Terms of Service
+                  </Link>
+                  {' '}and{' '}
+                  <Link href="/privacy-policy" target="_blank" className="text-[#0ea5e9] font-semibold hover:underline">
+                    Privacy Policy
+                  </Link>
+                </label>
               </div>
 
               {/* Updated: Primary button with brand colors */}

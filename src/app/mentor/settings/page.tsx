@@ -22,11 +22,22 @@ export default function MentorSettings() {
     fullName: '',
     currentTitle: '',
     currentCompany: '',
+    yearsExperience: 0,
     linkedinUrl: '',
     alumniSchool: '',
+    shortDescription: '',
+    aboutMe: '',
     focusAreas: [] as string[],
+    specialties: [] as string[],
+    jobTypeTags: [] as string[],
+    successfulCompanies: [] as string[],
+    companiesGotOffers: [] as string[],
+    companiesInterviewed: [] as string[],
     priceDollars: 0
   })
+  const [newSuccessCompany, setNewSuccessCompany] = useState('')
+  const [newOfferCompany, setNewOfferCompany] = useState('')
+  const [newInterviewCompany, setNewInterviewCompany] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   const focusAreaOptions = [
@@ -38,6 +49,104 @@ export default function MentorSettings() {
     'Behavioral',
     'Others'
   ]
+
+  const specialtyOptions = [
+    'B2B SaaS',
+    'Consumer Tech',
+    'Fintech',
+    'E-commerce',
+    'AI/ML Products',
+    'Growth PM',
+    'Platform PM',
+    'Technical PM'
+  ]
+
+  const jobTypeOptions = [
+    'Full-time',
+    'Internship',
+    'New Grad',
+    'Mid-level',
+    'Senior'
+  ]
+
+  const companyOptions = [
+    // FAANG/Big Tech
+    'Google', 'Meta', 'Amazon', 'Apple', 'Netflix', 'Microsoft',
+    // Other Major Tech
+    'Salesforce', 'Oracle', 'Adobe', 'IBM', 'SAP', 'Cisco', 'Intel', 'NVIDIA',
+    'AMD', 'Qualcomm', 'VMware', 'ServiceNow', 'Workday', 'Snowflake',
+    // Social/Consumer
+    'TikTok', 'Snap', 'Twitter/X', 'LinkedIn', 'Pinterest', 'Reddit', 'Discord',
+    'Spotify', 'Uber', 'Lyft', 'Airbnb', 'DoorDash', 'Instacart', 'Robinhood',
+    // E-commerce/Retail
+    'Shopify', 'eBay', 'Etsy', 'Wayfair', 'Chewy', 'Target', 'Walmart',
+    // Fintech
+    'Stripe', 'Square', 'PayPal', 'Coinbase', 'Plaid', 'Affirm', 'Chime',
+    'Brex', 'Ramp', 'Wise', 'Revolut',
+    // Enterprise SaaS
+    'Atlassian', 'Asana', 'Monday.com', 'Notion', 'Slack', 'Zoom', 'Dropbox',
+    'Box', 'DocuSign', 'HubSpot', 'Zendesk', 'Twilio', 'Datadog', 'Splunk',
+    // Cloud/Infrastructure
+    'AWS', 'Google Cloud', 'Azure', 'DigitalOcean', 'Cloudflare', 'MongoDB',
+    // Startups/Unicorns
+    'OpenAI', 'Anthropic', 'Databricks', 'Figma', 'Canva', 'Miro', 'Airtable',
+    'Webflow', 'Vercel', 'GitLab', 'GitHub', 'HashiCorp',
+    // Consulting/Professional Services
+    'McKinsey', 'BCG', 'Bain', 'Deloitte', 'Accenture', 'PwC', 'EY', 'KPMG',
+    // Finance
+    'Goldman Sachs', 'JPMorgan', 'Morgan Stanley', 'Citadel', 'Blackstone',
+    // Other Notable
+    'Tesla', 'SpaceX', 'Palantir', 'Roblox', 'Unity', 'Epic Games', 'Riot Games',
+    'Activision Blizzard', 'EA', 'Zynga', 'Peloton', 'Zillow', 'Redfin', 'Warner Bros Discovery', 'Disney',
+    'Capital One', 'LUCID'
+  ].sort()
+
+  const universityOptions = [
+    // Ivy League
+    'Harvard University', 'Yale University', 'Princeton University', 
+    'Columbia University', 'University of Pennsylvania', 'Cornell University',
+    'Brown University', 'Dartmouth College',
+    // Top Public Universities
+    'UC Berkeley', 'UCLA', 'UC San Diego', 'UC Irvine', 'UC Davis', 'UC Santa Barbara',
+    'University of Michigan', 'University of Virginia', 'University of North Carolina',
+    'University of Texas at Austin', 'University of Washington', 'University of Wisconsin',
+    'University of Illinois', 'Georgia Tech', 'Purdue University',
+    // Top Private Universities
+    'Stanford University', 'MIT', 'Caltech', 'Carnegie Mellon University',
+    'Duke University', 'Northwestern University', 'Johns Hopkins University',
+    'Rice University', 'Vanderbilt University', 'Emory University',
+    'University of Notre Dame', 'Georgetown University', 'USC',
+    'NYU', 'Boston University', 'Tufts University', 'Wake Forest University',
+    // Tech-focused
+    'Georgia Institute of Technology', 'University of Waterloo', 'RPI',
+    'Worcester Polytechnic Institute', 'Rochester Institute of Technology',
+    // West Coast
+    'University of Southern California', 'Santa Clara University', 'Pepperdine University',
+    'University of San Diego', 'San Diego State University', 'San Jose State University',
+    // East Coast
+    'Boston College', 'Northeastern University', 'Brandeis University',
+    'University of Rochester', 'Syracuse University', 'Lehigh University',
+    // Midwest
+    'University of Chicago', 'Washington University in St. Louis',
+    'Case Western Reserve University', 'Ohio State University',
+    // South
+    'University of Florida', 'University of Miami', 'Florida State University',
+    'University of Georgia', 'Clemson University', 'Virginia Tech',
+    // International
+    'University of Toronto', 'McGill University', 'University of British Columbia',
+    'Oxford University', 'Cambridge University', 'Imperial College London',
+    'National University of Singapore', 'IIT Bombay', 'IIT Delhi',
+    // State Schools
+    'Penn State University', 'Arizona State University', 'Indiana University',
+    'University of Minnesota', 'University of Colorado', 'University of Arizona',
+    'Rutgers University', 'University of Maryland', 'University of Massachusetts',
+    // Liberal Arts
+    'Williams College', 'Amherst College', 'Swarthmore College', 'Pomona College',
+    'Claremont McKenna College', 'Bowdoin College', 'Middlebury College',
+    // Business Schools (for MBA)
+    'Wharton School', 'Harvard Business School', 'Stanford GSB', 'MIT Sloan',
+    'Kellogg School of Management', 'Booth School of Business', 'Haas School of Business'
+  ].sort()
 
   useEffect(() => {
     fetchMentorData()
@@ -56,9 +165,17 @@ export default function MentorSettings() {
           fullName: profile.full_name || '',
           currentTitle: mentor.current_title || '',
           currentCompany: mentor.current_company || '',
+          yearsExperience: mentor.years_experience || 0,
           linkedinUrl: mentor.linkedin_url || '',
           alumniSchool: mentor.alumni_school || '',
+          shortDescription: mentor.short_description || '',
+          aboutMe: mentor.about_me || '',
           focusAreas: mentor.focus_areas || [],
+          specialties: mentor.specialties || [],
+          jobTypeTags: mentor.job_type_tags || [],
+          successfulCompanies: mentor.successful_companies || [],
+          companiesGotOffers: mentor.companies_got_offers || [],
+          companiesInterviewed: mentor.companies_interviewed || [],
           priceDollars: mentor.price_cents ? mentor.price_cents / 100 : 0
         })
       }
@@ -108,9 +225,17 @@ export default function MentorSettings() {
         body: JSON.stringify({
           current_title: formData.currentTitle,
           current_company: formData.currentCompany,
+          years_experience: formData.yearsExperience,
           linkedin_url: formData.linkedinUrl,
           alumni_school: formData.alumniSchool,
+          short_description: formData.shortDescription,
+          about_me: formData.aboutMe,
           focus_areas: formData.focusAreas,
+          specialties: formData.specialties,
+          job_type_tags: formData.jobTypeTags,
+          successful_companies: formData.successfulCompanies,
+          companies_got_offers: formData.companiesGotOffers,
+          companies_interviewed: formData.companiesInterviewed,
           price_cents: formData.priceDollars * 100
         })
       })
@@ -121,7 +246,22 @@ export default function MentorSettings() {
         // Refresh data
         await fetchMentorData()
       } else {
-        setMessage('Failed to update some settings. Please try again.')
+        // Get detailed error message
+        let errorMsg = 'Failed to update some settings. '
+        
+        if (!profileResponse.ok) {
+          const profileError = await profileResponse.json()
+          errorMsg += `Profile error: ${profileError.error || profileError.details || 'Unknown'}. `
+          console.error('Profile update error:', profileError)
+        }
+        
+        if (!mentorResponse.ok) {
+          const mentorError = await mentorResponse.json()
+          errorMsg += `Mentor error: ${mentorError.error || mentorError.details || 'Unknown'}.`
+          console.error('Mentor update error:', mentorError)
+        }
+        
+        setMessage(errorMsg)
       }
     } catch (error) {
       console.error('Error updating settings:', error)
@@ -131,7 +271,7 @@ export default function MentorSettings() {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -151,6 +291,75 @@ export default function MentorSettings() {
       focusAreas: checked 
         ? [...prev.focusAreas, area]
         : prev.focusAreas.filter(a => a !== area)
+    }))
+  }
+
+  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: checked 
+        ? [...prev.specialties, specialty]
+        : prev.specialties.filter(s => s !== specialty)
+    }))
+  }
+
+  const handleJobTypeChange = (jobType: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      jobTypeTags: checked 
+        ? [...prev.jobTypeTags, jobType]
+        : prev.jobTypeTags.filter(j => j !== jobType)
+    }))
+  }
+
+  const addSuccessCompany = () => {
+    if (newSuccessCompany.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        successfulCompanies: [...prev.successfulCompanies, newSuccessCompany.trim()]
+      }))
+      setNewSuccessCompany('')
+    }
+  }
+
+  const removeSuccessCompany = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      successfulCompanies: prev.successfulCompanies.filter((_, i) => i !== index)
+    }))
+  }
+
+  const addOfferCompany = () => {
+    if (newOfferCompany.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        companiesGotOffers: [...prev.companiesGotOffers, newOfferCompany.trim()]
+      }))
+      setNewOfferCompany('')
+    }
+  }
+
+  const removeOfferCompany = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      companiesGotOffers: prev.companiesGotOffers.filter((_, i) => i !== index)
+    }))
+  }
+
+  const addInterviewCompany = () => {
+    if (newInterviewCompany.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        companiesInterviewed: [...prev.companiesInterviewed, newInterviewCompany.trim()]
+      }))
+      setNewInterviewCompany('')
+    }
+  }
+
+  const removeInterviewCompany = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      companiesInterviewed: prev.companiesInterviewed.filter((_, i) => i !== index)
     }))
   }
 
@@ -270,8 +479,50 @@ export default function MentorSettings() {
                   name="currentCompany"
                   type="text"
                   required
+                  list="company-list"
                   value={formData.currentCompany}
                   onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="Start typing to see suggestions..."
+                />
+                <datalist id="company-list">
+                  {companyOptions.map((company) => (
+                    <option key={company} value={company} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="yearsExperience" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Years of Experience
+                </label>
+                <input
+                  id="yearsExperience"
+                  name="yearsExperience"
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.yearsExperience}
+                  onChange={handleNumberChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="priceDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Price per Session <span className="text-[#f97316]">($)</span>
+                </label>
+                <input
+                  id="priceDollars"
+                  name="priceDollars"
+                  type="number"
+                  min="0"
+                  step="1"
+                  required
+                  value={formData.priceDollars}
+                  onChange={handleNumberChange}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                 />
               </div>
@@ -300,27 +551,47 @@ export default function MentorSettings() {
                   id="alumniSchool"
                   name="alumniSchool"
                   type="text"
+                  list="university-list"
                   value={formData.alumniSchool}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="Start typing to see suggestions..."
                 />
+                <datalist id="university-list">
+                  {universityOptions.map((university) => (
+                    <option key={university} value={university} />
+                  ))}
+                </datalist>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="priceDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
-                Price per Session <span className="text-[#f97316]">($)</span>
+              <label htmlFor="shortDescription" className="block text-sm font-medium text-[#333333] dark:text-white">
+                Short Description <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(1-2 sentences)</span>
               </label>
-              <input
-                id="priceDollars"
-                name="priceDollars"
-                type="number"
-                min="0"
-                step="1"
-                required
-                value={formData.priceDollars}
-                onChange={handleNumberChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+              <textarea
+                id="shortDescription"
+                name="shortDescription"
+                rows={2}
+                value={formData.shortDescription}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors resize-none"
+                placeholder="Brief introduction about your coaching expertise..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="aboutMe" className="block text-sm font-medium text-[#333333] dark:text-white">
+                About Me <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Detailed bio)</span>
+              </label>
+              <textarea
+                id="aboutMe"
+                name="aboutMe"
+                rows={5}
+                value={formData.aboutMe}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors resize-none"
+                placeholder="Share your background, experience, and coaching philosophy..."
               />
             </div>
 
@@ -344,6 +615,170 @@ export default function MentorSettings() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                Specialties
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {specialtyOptions.map((specialty) => (
+                  <div key={specialty} className="flex items-center space-x-3">
+                    <input
+                      id={`specialty-${specialty}`}
+                      type="checkbox"
+                      checked={formData.specialties.includes(specialty)}
+                      onChange={(e) => handleSpecialtyChange(specialty, e.target.checked)}
+                      className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
+                    />
+                    <label htmlFor={`specialty-${specialty}`} className="text-sm text-[#333333] dark:text-white">
+                      {specialty}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                Job Types You Help With
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {jobTypeOptions.map((jobType) => (
+                  <div key={jobType} className="flex items-center space-x-3">
+                    <input
+                      id={`jobtype-${jobType}`}
+                      type="checkbox"
+                      checked={formData.jobTypeTags.includes(jobType)}
+                      onChange={(e) => handleJobTypeChange(jobType, e.target.checked)}
+                      className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
+                    />
+                    <label htmlFor={`jobtype-${jobType}`} className="text-sm text-[#333333] dark:text-white">
+                      {jobType}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                Companies You've Helped Students Get Into
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  list="company-list"
+                  value={newSuccessCompany}
+                  onChange={(e) => setNewSuccessCompany(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSuccessCompany())}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="e.g., Google"
+                />
+                <button
+                  type="button"
+                  onClick={addSuccessCompany}
+                  className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors font-medium"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.successfulCompanies.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.successfulCompanies.map((company, index) => (
+                    <div key={index} className="flex items-center gap-2 px-3 py-1 bg-[#0ea5e9]/10 text-[#0ea5e9] rounded-full">
+                      <span className="text-sm font-medium">{company}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeSuccessCompany(index)}
+                        className="hover:text-red-500 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                Companies I Got Offers From
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  list="company-list"
+                  value={newOfferCompany}
+                  onChange={(e) => setNewOfferCompany(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addOfferCompany())}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="e.g., Meta"
+                />
+                <button
+                  type="button"
+                  onClick={addOfferCompany}
+                  className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors font-medium"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.companiesGotOffers.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.companiesGotOffers.map((company, index) => (
+                    <div key={index} className="flex items-center gap-2 px-3 py-1 bg-[#8b5cf6]/10 text-[#8b5cf6] rounded-full">
+                      <span className="text-sm font-medium">{company}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeOfferCompany(index)}
+                        className="hover:text-red-500 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                Companies I've Interviewed At
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  list="company-list"
+                  value={newInterviewCompany}
+                  onChange={(e) => setNewInterviewCompany(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterviewCompany())}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="e.g., Amazon"
+                />
+                <button
+                  type="button"
+                  onClick={addInterviewCompany}
+                  className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors font-medium"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.companiesInterviewed.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {formData.companiesInterviewed.map((company, index) => (
+                    <div key={index} className="flex items-center gap-2 px-3 py-1 bg-[#f97316]/10 text-[#f97316] rounded-full">
+                      <span className="text-sm font-medium">{company}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeInterviewCompany(index)}
+                        className="hover:text-red-500 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <Button

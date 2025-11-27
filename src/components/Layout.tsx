@@ -1,5 +1,6 @@
 import Header from "./Header-simple";
 import Sidebar from "./Sidebar";
+import Footer from "./Footer";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,11 +23,12 @@ export default function Layout({
 }: LayoutProps) {
   if (variant === "landing") {
     return (
-      <div className="font-display bg-[#F7F9FB] dark:bg-[#111827] text-[#0F172A] dark:text-[#F3F4F6] min-h-screen">
+      <div className="font-display bg-[#F7F9FB] dark:bg-[#111827] text-[#0F172A] dark:text-[#F3F4F6] min-h-screen flex flex-col">
         <Header variant="landing" />
         <main className="flex-1">
           {children}
         </main>
+        <Footer />
       </div>
     );
   }

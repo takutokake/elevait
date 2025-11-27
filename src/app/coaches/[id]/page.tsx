@@ -28,8 +28,9 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
   const aboutMe = mentor.mentor_data?.about_me;
   const jobTypeTags = mentor.mentor_data?.job_type_tags || [];
   const specialties = mentor.mentor_data?.specialties || mentor.mentor_data?.focus_areas || [];
-  const keyAchievements = mentor.mentor_data?.key_achievements || [];
   const successfulCompanies = mentor.mentor_data?.successful_companies || [];
+  const companiesGotOffers = mentor.mentor_data?.companies_got_offers || [];
+  const companiesInterviewed = mentor.mentor_data?.companies_interviewed || [];
   const yearsExperience = mentor.mentor_data?.years_experience;
   const totalSessions = 0; // Will be implemented later
 
@@ -127,33 +128,50 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                   </div>
                 )}
 
-                {/* Key Achievements */}
-                {keyAchievements.length > 0 && (
-                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Key Achievements</h2>
-                    <ul className="space-y-3">
-                      {keyAchievements.map((achievement, index) => (
-                        <li key={index} className="flex items-start gap-3">
-                          <svg className="w-5 h-5 text-[#10b981] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          <span className="text-[#64748B] dark:text-[#94A3B8]">{achievement}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Successful Companies */}
+                {/* Companies Helped Students Get Into */}
                 {successfulCompanies.length > 0 && (
                   <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Interview Success</h2>
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Student Success Stories</h2>
                     <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-3">
                       Helped students get offers or interviews at:
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {successfulCompanies.map((company, index) => (
-                        <span key={index} className="bg-green-100/80 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-full text-sm font-medium">
+                        <span key={index} className="bg-[#0ea5e9]/10 text-[#0ea5e9] px-3 py-1.5 rounded-full text-sm font-medium">
+                          {company}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Companies Got Offers From */}
+                {companiesGotOffers.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">My Offers</h2>
+                    <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-3">
+                      Received offers from:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {companiesGotOffers.map((company, index) => (
+                        <span key={index} className="bg-[#8b5cf6]/10 text-[#8b5cf6] px-3 py-1.5 rounded-full text-sm font-medium">
+                          {company}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Companies Interviewed At */}
+                {companiesInterviewed.length > 0 && (
+                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
+                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">My Interview Experience</h2>
+                    <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mb-3">
+                      Interviewed at:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {companiesInterviewed.map((company, index) => (
+                        <span key={index} className="bg-[#f97316]/10 text-[#f97316] px-3 py-1.5 rounded-full text-sm font-medium">
                           {company}
                         </span>
                       ))}

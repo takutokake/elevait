@@ -34,23 +34,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Profile already exists' })
     }
 
-    // Create profile
+    // Create profile with email from user object
+    // Initialize with empty roles array - user will add roles during onboarding
+    // Set role to desired_role but rely on onboarding_complete flag for access control
+    const profileData = {
+      id: user.id,
+      email: user.email,
+      full_name: full_name || user.user_metadata?.full_name || '',
+      desired_role: desired_role || 'student',
+      role: desired_role || 'student', // Set to desired role - access controlled by onboarding_complete
+      roles: [], // New multi-role support - will be populated during onboarding
+      onboarding_complete: false // This is the key - prevents dashboard access until onboarding done
+    }
+    
+    console.log('[API /profile/create] Inserting profile data:', profileData)
+    
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({
-        id: user.id,
-        full_name: full_name || user.user_metadata?.full_name || '',
-        desired_role: desired_role || 'student',
-        role: null,
-        onboarding_complete: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(profileData)
 
     if (profileError) {
       console.error('[API /profile/create] Error creating profile:', profileError)
+      console.error('[API /profile/create] Error details:', {
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint
+      })
       return NextResponse.json(
-        { error: 'Failed to create profile', details: profileError.message },
+        { error: 'Failed to create profile', details: profileError.message, code: profileError.code },
         { status: 500 }
       )
     }

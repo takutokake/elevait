@@ -41,8 +41,9 @@ export default function CoachApplicationPage() {
     aboutMe: '',
     jobTypeTags: [] as string[],
     specialties: [] as string[],
-    keyAchievements: ['', '', ''],
-    successfulCompanies: [] as string[]
+    successfulCompanies: [] as string[],
+    companiesGotOffers: [] as string[],
+    companiesInterviewed: [] as string[]
   })
 
   const focusAreaOptions = [
@@ -77,6 +78,85 @@ export default function CoachApplicationPage() {
     'stakeholder_management'
   ]
 
+  const companyOptions = [
+    // FAANG/Big Tech
+    'Google', 'Meta', 'Amazon', 'Apple', 'Netflix', 'Microsoft',
+    // Other Major Tech
+    'Salesforce', 'Oracle', 'Adobe', 'IBM', 'SAP', 'Cisco', 'Intel', 'NVIDIA',
+    'AMD', 'Qualcomm', 'VMware', 'ServiceNow', 'Workday', 'Snowflake',
+    // Social/Consumer
+    'TikTok', 'Snap', 'Twitter/X', 'LinkedIn', 'Pinterest', 'Reddit', 'Discord',
+    'Spotify', 'Uber', 'Lyft', 'Airbnb', 'DoorDash', 'Instacart', 'Robinhood',
+    // E-commerce/Retail
+    'Shopify', 'eBay', 'Etsy', 'Wayfair', 'Chewy', 'Target', 'Walmart',
+    // Fintech
+    'Stripe', 'Square', 'PayPal', 'Coinbase', 'Plaid', 'Affirm', 'Chime',
+    'Brex', 'Ramp', 'Wise', 'Revolut',
+    // Enterprise SaaS
+    'Atlassian', 'Asana', 'Monday.com', 'Notion', 'Slack', 'Zoom', 'Dropbox',
+    'Box', 'DocuSign', 'HubSpot', 'Zendesk', 'Twilio', 'Datadog', 'Splunk',
+    // Cloud/Infrastructure
+    'AWS', 'Google Cloud', 'Azure', 'DigitalOcean', 'Cloudflare', 'MongoDB',
+    // Startups/Unicorns
+    'OpenAI', 'Anthropic', 'Databricks', 'Figma', 'Canva', 'Miro', 'Airtable',
+    'Webflow', 'Vercel', 'GitLab', 'GitHub', 'HashiCorp',
+    // Consulting/Professional Services
+    'McKinsey', 'BCG', 'Bain', 'Deloitte', 'Accenture', 'PwC', 'EY', 'KPMG',
+    // Finance
+    'Goldman Sachs', 'JPMorgan', 'Morgan Stanley', 'Citadel', 'Blackstone',
+    // Other Notable
+    'Tesla', 'SpaceX', 'Palantir', 'Roblox', 'Unity', 'Epic Games', 'Riot Games',
+    'Activision Blizzard', 'EA', 'Zynga', 'Peloton', 'Zillow', 'Redfin', 'Warner Bros Discovery', 'Disney',
+    'Capital One', 'LUCID'
+  ].sort()
+
+  const universityOptions = [
+    // Ivy League
+    'Harvard University', 'Yale University', 'Princeton University', 
+    'Columbia University', 'University of Pennsylvania', 'Cornell University',
+    'Brown University', 'Dartmouth College',
+    // Top Public Universities
+    'UC Berkeley', 'UCLA', 'UC San Diego', 'UC Irvine', 'UC Davis', 'UC Santa Barbara',
+    'University of Michigan', 'University of Virginia', 'University of North Carolina',
+    'University of Texas at Austin', 'University of Washington', 'University of Wisconsin',
+    'University of Illinois', 'Georgia Tech', 'Purdue University',
+    // Top Private Universities
+    'Stanford University', 'MIT', 'Caltech', 'Carnegie Mellon University',
+    'Duke University', 'Northwestern University', 'Johns Hopkins University',
+    'Rice University', 'Vanderbilt University', 'Emory University',
+    'University of Notre Dame', 'Georgetown University', 'USC',
+    'NYU', 'Boston University', 'Tufts University', 'Wake Forest University',
+    // Tech-focused
+    'Georgia Institute of Technology', 'University of Waterloo', 'RPI',
+    'Worcester Polytechnic Institute', 'Rochester Institute of Technology',
+    // West Coast
+    'University of Southern California', 'Santa Clara University', 'Pepperdine University',
+    'University of San Diego', 'San Diego State University', 'San Jose State University',
+    // East Coast
+    'Boston College', 'Northeastern University', 'Brandeis University',
+    'University of Rochester', 'Syracuse University', 'Lehigh University',
+    // Midwest
+    'University of Chicago', 'Washington University in St. Louis',
+    'Case Western Reserve University', 'Ohio State University',
+    // South
+    'University of Florida', 'University of Miami', 'Florida State University',
+    'University of Georgia', 'Clemson University', 'Virginia Tech',
+    // International
+    'University of Toronto', 'McGill University', 'University of British Columbia',
+    'Oxford University', 'Cambridge University', 'Imperial College London',
+    'National University of Singapore', 'IIT Bombay', 'IIT Delhi',
+    // State Schools
+    'Penn State University', 'Arizona State University', 'Indiana University',
+    'University of Minnesota', 'University of Colorado', 'University of Arizona',
+    'Rutgers University', 'University of Maryland', 'University of Massachusetts',
+    // Liberal Arts
+    'Williams College', 'Amherst College', 'Swarthmore College', 'Pomona College',
+    'Claremont McKenna College', 'Bowdoin College', 'Middlebury College',
+    // Business Schools (for MBA)
+    'Wharton School', 'Harvard Business School', 'Stanford GSB', 'MIT Sloan',
+    'Kellogg School of Management', 'Booth School of Business', 'Haas School of Business'
+  ].sort()
+
   // Check if user is logged in and get profile
   useEffect(() => {
     const checkUser = async () => {
@@ -87,10 +167,16 @@ export default function CoachApplicationPage() {
         
         if (data.user) {
           setUser(data.user)
+          
+          // Autofill from profile, user metadata, or existing mentor application
+          const fullName = data.profile?.full_name || 
+                          data.user.user_metadata?.full_name || 
+                          data.user.user_metadata?.name || ''
+          
           setFormData(prev => ({
             ...prev,
             email: data.user.email,
-            fullName: data.profile?.full_name || ''
+            fullName: fullName
           }))
 
           // Set profile data
@@ -161,26 +247,19 @@ export default function CoachApplicationPage() {
     }))
   }
 
-  const handleAchievementChange = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      keyAchievements: prev.keyAchievements.map((ach, i) => i === index ? value : ach)
-    }))
-  }
-
-  const handleCompanyAdd = (company: string) => {
-    if (company.trim() && !formData.successfulCompanies.includes(company.trim())) {
+  const handleCompanyAdd = (field: 'successfulCompanies' | 'companiesGotOffers' | 'companiesInterviewed', company: string) => {
+    if (company.trim() && !formData[field].includes(company.trim())) {
       setFormData(prev => ({
         ...prev,
-        successfulCompanies: [...prev.successfulCompanies, company.trim()]
+        [field]: [...prev[field], company.trim()]
       }))
     }
   }
 
-  const handleCompanyRemove = (company: string) => {
+  const handleCompanyRemove = (field: 'successfulCompanies' | 'companiesGotOffers' | 'companiesInterviewed', company: string) => {
     setFormData(prev => ({
       ...prev,
-      successfulCompanies: prev.successfulCompanies.filter(c => c !== company)
+      [field]: prev[field].filter(c => c !== company)
     }))
   }
 
@@ -224,8 +303,9 @@ export default function CoachApplicationPage() {
           aboutMe: formData.aboutMe,
           jobTypeTags: formData.jobTypeTags,
           specialties: formData.specialties,
-          keyAchievements: formData.keyAchievements.filter(a => a.trim()),
           successfulCompanies: formData.successfulCompanies,
+          companiesGotOffers: formData.companiesGotOffers,
+          companiesInterviewed: formData.companiesInterviewed,
           avatarUrl: avatarUrl || undefined
         })
       })
@@ -399,9 +479,15 @@ export default function CoachApplicationPage() {
                     required
                     value={formData.currentCompany}
                     onChange={handleInputChange}
+                    list="company-options"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                     placeholder="Company name"
                   />
+                  <datalist id="company-options">
+                    {companyOptions.map(company => (
+                      <option key={company} value={company} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -471,9 +557,15 @@ export default function CoachApplicationPage() {
                     required
                     value={formData.alumniSchool}
                     onChange={handleInputChange}
+                    list="university-options"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                     placeholder="University name"
                   />
+                  <datalist id="university-options">
+                    {universityOptions.map(university => (
+                      <option key={university} value={university} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -585,35 +677,20 @@ export default function CoachApplicationPage() {
 
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                  Key Achievements <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(List 3 major accomplishments)</span>
-                </label>
-                {formData.keyAchievements.map((achievement, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    value={achievement}
-                    onChange={(e) => handleAchievementChange(index, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                    placeholder={`Achievement ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                  Successful Companies <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Companies where you helped students get offers/interviews)</span>
+                  Companies You've Helped Students Get Into
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    id="companyInput"
+                    id="successCompanyInput"
+                    list="company-options"
                     placeholder="Add company name"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
                         const input = e.target as HTMLInputElement
-                        handleCompanyAdd(input.value)
+                        handleCompanyAdd('successfulCompanies', input.value)
                         input.value = ''
                       }
                     }}
@@ -621,8 +698,8 @@ export default function CoachApplicationPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const input = document.getElementById('companyInput') as HTMLInputElement
-                      handleCompanyAdd(input.value)
+                      const input = document.getElementById('successCompanyInput') as HTMLInputElement
+                      handleCompanyAdd('successfulCompanies', input.value)
                       input.value = ''
                     }}
                     className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors"
@@ -635,13 +712,119 @@ export default function CoachApplicationPage() {
                     {formData.successfulCompanies.map((company, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm"
+                        className="inline-flex items-center gap-1 bg-[#0ea5e9]/10 text-[#0ea5e9] px-3 py-1 rounded-full text-sm"
                       >
                         {company}
                         <button
                           type="button"
-                          onClick={() => handleCompanyRemove(company)}
-                          className="hover:text-green-900 dark:hover:text-green-200"
+                          onClick={() => handleCompanyRemove('successfulCompanies', company)}
+                          className="hover:text-red-500"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Companies I Got Offers From
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="offerCompanyInput"
+                    list="company-options"
+                    placeholder="Add company name"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const input = e.target as HTMLInputElement
+                        handleCompanyAdd('companiesGotOffers', input.value)
+                        input.value = ''
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('offerCompanyInput') as HTMLInputElement
+                      handleCompanyAdd('companiesGotOffers', input.value)
+                      input.value = ''
+                    }}
+                    className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.companiesGotOffers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.companiesGotOffers.map((company, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 bg-[#8b5cf6]/10 text-[#8b5cf6] px-3 py-1 rounded-full text-sm"
+                      >
+                        {company}
+                        <button
+                          type="button"
+                          onClick={() => handleCompanyRemove('companiesGotOffers', company)}
+                          className="hover:text-red-500"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Companies I've Interviewed At
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="interviewCompanyInput"
+                    list="company-options"
+                    placeholder="Add company name"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const input = e.target as HTMLInputElement
+                        handleCompanyAdd('companiesInterviewed', input.value)
+                        input.value = ''
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('interviewCompanyInput') as HTMLInputElement
+                      handleCompanyAdd('companiesInterviewed', input.value)
+                      input.value = ''
+                    }}
+                    className="px-4 py-2 bg-[#0ea5e9] text-white rounded-lg hover:bg-[#0ea5e9]/90 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.companiesInterviewed.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.companiesInterviewed.map((company, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 bg-[#f97316]/10 text-[#f97316] px-3 py-1 rounded-full text-sm"
+                      >
+                        {company}
+                        <button
+                          type="button"
+                          onClick={() => handleCompanyRemove('companiesInterviewed', company)}
+                          className="hover:text-red-500"
                         >
                           ×
                         </button>

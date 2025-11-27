@@ -30,8 +30,9 @@ export interface MentorData {
   about_me: string | null
   job_type_tags: string[] | null
   specialties: string[] | null
-  key_achievements: string[] | null
   successful_companies: string[] | null
+  companies_got_offers: string[] | null
+  companies_interviewed: string[] | null
   is_active: boolean | null
   created_at: string
 }
@@ -81,8 +82,9 @@ export async function getAllMentors(): Promise<MentorWithDetails[]> {
         about_me,
         job_type_tags,
         specialties,
-        key_achievements,
         successful_companies,
+        companies_got_offers,
+        companies_interviewed,
         is_active,
         created_at
       `)

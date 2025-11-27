@@ -50,9 +50,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update profiles table
+    // Get current profile to check existing roles
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('roles, role')
+      .eq('id', user.id)
+      .single()
+
+    // Update profiles table - add 'mentor' to roles array if not already present
+    const currentRoles = currentProfile?.roles || []
+    const updatedRoles = currentRoles.includes('mentor') 
+      ? currentRoles 
+      : [...currentRoles, 'mentor']
+
     const profileUpdates: any = {
-      role: 'mentor',
+      role: 'mentor', // Keep for backward compatibility (primary role)
+      roles: updatedRoles, // Multi-role support
       onboarding_complete: true
     }
 
