@@ -1,52 +1,16 @@
+import 'server-only'
 import { getSupabaseServerClient } from './supabaseServer'
+import type { MentorProfile, MentorData, MentorWithDetails } from '@/types/mentor'
 
-export interface MentorProfile {
-  id: string
-  full_name: string | null
-  avatar_url: string | null
-  role: string | null
-  bio: string | null
-  linkedin_url: string | null
-  company: string | null
-  job_title: string | null
-  years_of_experience: number | null
-  hourly_rate: number | null
-  specialties: string[] | null
-  focus_areas: string[] | null
-  created_at: string
-  updated_at: string
-}
-
-export interface MentorData {
-  id: string
-  current_title: string | null
-  current_company: string | null
-  years_experience: number | null
-  linkedin_url: string | null
-  focus_areas: string[] | null
-  price_cents: number | null
-  alumni_school: string | null
-  short_description: string | null
-  about_me: string | null
-  job_type_tags: string[] | null
-  specialties: string[] | null
-  successful_companies: string[] | null
-  companies_got_offers: string[] | null
-  companies_interviewed: string[] | null
-  is_active: boolean | null
-  created_at: string
-}
-
-export interface MentorWithDetails extends MentorProfile {
-  mentor_data?: MentorData
-}
+// Re-export types for backward compatibility
+export type { MentorProfile, MentorData, MentorWithDetails }
 
 /**
  * Fetch all active mentors from Supabase
  * Joins profiles with mentors table to get complete mentor information
  */
 export async function getAllMentors(): Promise<MentorWithDetails[]> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
   
   try {
     // Fetch all profiles where role is 'mentor'
@@ -115,7 +79,7 @@ export async function getAllMentors(): Promise<MentorWithDetails[]> {
  * Returns complete profile and mentor information
  */
 export async function getMentorById(mentorId: string): Promise<MentorWithDetails | null> {
-  const supabase = getSupabaseServerClient()
+  const supabase = await getSupabaseServerClient()
   
   try {
     // Fetch profile
@@ -147,8 +111,9 @@ export async function getMentorById(mentorId: string): Promise<MentorWithDetails
         about_me,
         job_type_tags,
         specialties,
-        key_achievements,
         successful_companies,
+        companies_got_offers,
+        companies_interviewed,
         is_active,
         created_at
       `)
@@ -169,24 +134,5 @@ export async function getMentorById(mentorId: string): Promise<MentorWithDetails
   }
 }
 
-/**
- * Get mentor initials for avatar fallback
- */
-export function getMentorInitials(fullName: string | null): string {
-  if (!fullName) return '?'
-  
-  const names = fullName.trim().split(' ')
-  if (names.length === 1) {
-    return names[0][0]?.toUpperCase() || '?'
-  }
-  
-  return (names[0][0] + names[names.length - 1][0]).toUpperCase()
-}
-
-/**
- * Format hourly rate for display from price_cents
- */
-export function formatHourlyRate(priceCents: number | null | undefined): string {
-  if (!priceCents) return 'Contact for pricing'
-  return `$${(priceCents / 100).toFixed(0)}`
-}
+// Re-export utility functions for backward compatibility
+export { getMentorInitials, formatHourlyRate } from './mentorUtils'

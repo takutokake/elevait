@@ -253,12 +253,42 @@ export default function MentorSessions() {
     )
   }
 
+  const handleCancelConfirmedBooking = async (bookingId: string) => {
+    const reason = prompt('Please provide a reason for cancelling this confirmed session:')
+    
+    if (reason === null) return // User clicked cancel
+    
+    setProcessingBookingId(bookingId)
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'No reason provided', cancelledBy: 'mentor' })
+      })
+
+      if (response.ok) {
+        toast.success('Session cancelled and student has been notified')
+        await fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to cancel session')
+      }
+    } catch (error) {
+      console.error('Error cancelling session:', error)
+      toast.error('Failed to cancel session')
+    } finally {
+      setProcessingBookingId(null)
+    }
+  }
+
   const SessionCard = ({ booking, isPast = false }: { booking: Booking, isPast?: boolean }) => {
     const { date, time } = formatDateTime(booking.booking_start_time)
     const startTime = new Date(booking.booking_start_time)
     const endTime = new Date(booking.booking_end_time)
     const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
     const needsSurvey = isPast && endTime < now && booking.status === 'confirmed'
+    const canCancel = !isPast && booking.status === 'confirmed'
+    const isProcessing = processingBookingId === booking.id
     
     return (
       <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50">
@@ -295,6 +325,17 @@ export default function MentorSessions() {
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Complete Survey
+                </Button>
+              )}
+              {canCancel && (
+                <Button
+                  onClick={() => handleCancelConfirmedBooking(booking.id)}
+                  disabled={isProcessing}
+                  variant="outline"
+                  className="border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  {isProcessing ? 'Cancelling...' : 'Cancel Session'}
                 </Button>
               )}
             </div>

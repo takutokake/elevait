@@ -11,7 +11,7 @@ export async function POST() {
       )
     }
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Update profile to mark onboarding as complete
     const { error: updateError } = await supabase

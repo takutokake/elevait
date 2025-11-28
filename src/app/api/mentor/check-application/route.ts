@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ hasPendingApplication: false })
     }
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Check if user has any pending or approved applications
     const { data: applications, error } = await supabase

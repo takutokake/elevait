@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Convert price from dollars to cents
     const priceCents = Math.round(priceDollars * 100)
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Upsert into mentors table
     const { error: mentorError } = await supabase

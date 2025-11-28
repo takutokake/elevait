@@ -6,7 +6,7 @@ import { getSupabaseServerClient } from '@/lib/supabaseServer'
  */
 export async function GET() {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     
     const checks = {
       supabase_connected: false,

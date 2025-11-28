@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { MentorWithDetails, getMentorInitials, formatHourlyRate } from "@/lib/mentorHelpers";
+import { MentorWithDetails } from "@/types/mentor";
+import { getMentorInitials, formatHourlyRate } from "@/lib/mentorUtils";
 
 interface CoachCardProps {
   mentor: MentorWithDetails;

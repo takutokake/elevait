@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from '@/lib/supabaseServer'
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()

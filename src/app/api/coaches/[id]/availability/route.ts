@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { id: coachId } = await params
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { searchParams } = new URL(request.url)
 
     // Default date range: today to +30 days

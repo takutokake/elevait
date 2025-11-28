@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     const { id: bookingId } = await params
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {

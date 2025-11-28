@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[API /profile/update-role] Updating desired_role to:', desired_role)
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Update profile's desired_role
     const { error: updateError } = await supabase

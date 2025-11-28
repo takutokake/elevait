@@ -4,7 +4,7 @@ import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 export async function GET() {
   try {
     console.log('[API /me] Starting request...')
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     console.log('[API /me] User:', user ? `ID: ${user.id}, Email: ${user.email}` : 'No user')

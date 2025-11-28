@@ -15,6 +15,9 @@ interface Booking {
   learner_email: string
   learner_phone?: string
   session_notes?: string
+  cancellation_reason?: string
+  cancelled_at?: string
+  cancelled_by?: string
   created_at: string
   updated_at: string
 }
@@ -98,8 +101,16 @@ export default function StudentSessions() {
     new Date(a.booking_start_time).getTime() - new Date(b.booking_start_time).getTime()
   )
   
+  const cancelledBookings = bookings.filter(booking => 
+    booking.status === 'cancelled'
+  ).sort((a, b) => 
+    new Date(b.booking_start_time).getTime() - new Date(a.booking_start_time).getTime()
+  )
+  
   const pastBookings = bookings.filter(booking => 
-    new Date(booking.booking_start_time) <= now
+    new Date(booking.booking_start_time) <= now &&
+    booking.status !== 'cancelled' &&
+    booking.status !== 'pending'
   ).sort((a, b) => 
     new Date(b.booking_start_time).getTime() - new Date(a.booking_start_time).getTime()
   )
@@ -145,14 +156,15 @@ export default function StudentSessions() {
     const startTime = new Date(booking.booking_start_time)
     const endTime = new Date(booking.booking_end_time)
     const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
+    const isCancelled = booking.status === 'cancelled'
     
     return (
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50">
+      <Card className={`border ${isCancelled ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50'}`}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <div className="flex items-center space-x-4">
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-[#333333] dark:text-white">
                     {date} at {time}
                   </p>
@@ -162,6 +174,11 @@ export default function StudentSessions() {
                   {booking.session_notes && (
                     <p className="text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
                       Notes: {booking.session_notes}
+                    </p>
+                  )}
+                  {isCancelled && booking.cancellation_reason && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-2 p-2 bg-white dark:bg-gray-800 rounded">
+                      <span className="font-medium">Cancellation Reason:</span> {booking.cancellation_reason}
                     </p>
                   )}
                 </div>
@@ -231,6 +248,23 @@ export default function StudentSessions() {
           </Card>
         )}
       </div>
+
+      {/* Cancelled Sessions */}
+      {cancelledBookings.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-[#333333] dark:text-white mb-4">
+            Cancelled Sessions ({cancelledBookings.length})
+          </h2>
+          <p className="text-sm text-[#333333]/70 dark:text-[#F5F5F5]/70 mb-4">
+            These sessions were cancelled by you or your mentor
+          </p>
+          <div className="space-y-4">
+            {cancelledBookings.map((booking, index) => (
+              <SessionCard key={index} booking={booking} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Past Sessions */}
       <div>

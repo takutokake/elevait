@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const priceRangeMinCents = Math.round(priceRangeMinDollars * 100)
     const priceRangeMaxCents = Math.round(priceRangeMaxDollars * 100)
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Upsert into students table
     const { error: studentError } = await supabase

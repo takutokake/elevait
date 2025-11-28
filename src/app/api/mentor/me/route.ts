@@ -3,7 +3,7 @@ import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 
 export async function GET() {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {

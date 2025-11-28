@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[API /profile/create] Creating profile with:', { full_name, desired_role })
 
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
 
     // Check if profile already exists
     const { data: existingProfile } = await supabase

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { isValidBookingDuration, isPastDate, validateLeadTime } from '@/lib/dateUtils'
+import { sendBookingRequestEmails } from '@/lib/emailService'
 
 /**
  * POST /api/bookings
@@ -9,7 +10,7 @@ import { isValidBookingDuration, isPastDate, validateLeadTime } from '@/lib/date
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {
@@ -137,6 +138,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch mentor and learner details separately
+    const { data: mentorProfile, error: mentorError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .eq('id', booking.mentor_id)
+      .single()
+
+    const { data: learnerProfile, error: learnerError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .eq('id', booking.learner_id)
+      .single()
+
+    console.log('[Booking] Mentor profile:', mentorProfile)
+    console.log('[Booking] Learner profile:', learnerProfile)
+    console.log('[Booking] Mentor error:', mentorError)
+    console.log('[Booking] Learner error:', learnerError)
+
+    // Send email notifications (don't block on this)
+    try {
+      const bookingStart = new Date(booking.booking_start_time)
+      const bookingEnd = new Date(booking.booking_end_time)
+      const durationMinutes = Math.round((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60))
+      
+      console.log('[Booking] Sending emails to:', {
+        student: booking.learner_email,
+        coach: mentorProfile?.email,
+        admin: 'tryelevait@gmail.com'
+      })
+      
+      await sendBookingRequestEmails({
+        studentName: learnerProfile?.full_name || 'Student',
+        studentEmail: booking.learner_email,
+        coachName: mentorProfile?.full_name || 'Coach',
+        coachEmail: mentorProfile?.email || '',
+        bookingDate: bookingStart.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          month: 'long', 
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        bookingTime: bookingStart.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        duration: `${durationMinutes} minutes`,
+        sessionNotes: booking.session_notes || undefined
+      })
+    } catch (emailError) {
+      console.error('Failed to send booking emails:', emailError)
+      // Don't fail the booking if emails fail
+    }
+
     return NextResponse.json({ booking, bookingId: data })
   } catch (error) {
     console.error('API /bookings POST error:', error)
@@ -154,7 +209,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {
@@ -224,7 +279,7 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {

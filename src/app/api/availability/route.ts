@@ -9,7 +9,7 @@ import { getUserTimezone } from '@/lib/dateUtils'
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { searchParams } = new URL(request.url)
     const mentorId = searchParams.get('mentorId')
     const from = searchParams.get('from')
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient()
+    const supabase = await getSupabaseServerClient()
     const { user } = await getSessionUser()
 
     if (!user) {
