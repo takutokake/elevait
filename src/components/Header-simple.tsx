@@ -136,8 +136,8 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
             Coaches
           </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
-            Jobs
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/upcoming">
+            Upcoming
           </Link>
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/about">
             About
@@ -183,8 +183,8 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/coaches">
               Coaches
             </Link>
-            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/jobs">
-              Jobs
+            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/upcoming">
+              Upcoming
             </Link>
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/about">
               About

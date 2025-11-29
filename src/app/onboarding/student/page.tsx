@@ -26,7 +26,8 @@ export default function StudentOnboardingPage() {
     track: 'product' as 'product' | 'eng' | 'design',
     pmFocusAreas: [] as string[],
     priceRangeMinDollars: 50,
-    priceRangeMaxDollars: 200
+    priceRangeMaxDollars: 200,
+    referredBy: ''
   })
 
   const focusAreaOptions = [
@@ -226,6 +227,24 @@ export default function StudentOnboardingPage() {
                     placeholder="Enter your alumni school"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="referredBy" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Referral <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Optional)</span>
+                </label>
+                <input
+                  id="referredBy"
+                  name="referredBy"
+                  type="text"
+                  value={formData.referredBy}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="Who referred you to Elevait?"
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  If someone referred you, please enter their name
+                </p>
               </div>
 
               <div className="space-y-2">

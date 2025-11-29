@@ -12,7 +12,8 @@ export default function SignUpPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    password: ''
+    password: '',
+    referredBy: ''
   })
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -40,7 +41,8 @@ export default function SignUpPage() {
         options: {
           data: {
             full_name: formData.fullName,
-            desired_role: roleChoice === 'coach' ? 'mentor' : 'student'
+            desired_role: roleChoice === 'coach' ? 'mentor' : 'student',
+            referred_by: formData.referredBy || null
           }
         }
       })
@@ -250,6 +252,24 @@ export default function SignUpPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                   placeholder="Create a password"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="referredBy" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Referral <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60 font-normal">(Optional)</span>
+                </label>
+                <input
+                  id="referredBy"
+                  name="referredBy"
+                  type="text"
+                  value={formData.referredBy}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  placeholder="Who referred you to Elevait?"
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  If someone referred you, please enter their name
+                </p>
               </div>
 
               {/* Terms and Conditions Checkbox */}

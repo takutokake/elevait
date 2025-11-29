@@ -11,6 +11,9 @@ export default function Footer() {
             <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
               Unlock your product management potential with personalized coaching and exclusive opportunities.
             </p>
+            <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
+              Contact us: <a href="mailto:tryelevait@gmail.com" className="text-[#0ea5e9] hover:underline">tryelevait@gmail.com</a>
+            </p>
           </div>
 
           {/* Platform */}
@@ -23,8 +26,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/jobs" className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80 hover:text-[#0ea5e9] transition-colors">
-                  Browse Jobs
+                <Link href="/upcoming" className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80 hover:text-[#0ea5e9] transition-colors">
+                  Upcoming
                 </Link>
               </li>
               <li>

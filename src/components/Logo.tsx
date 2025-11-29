@@ -9,10 +9,10 @@ interface LogoProps {
 }
 
 const sizeClasses = {
-  sm: "h-8 w-auto",
-  md: "h-10 w-auto",
+  sm: "h-10 w-auto",
+  md: "h-12 w-auto",
   lg: "h-20 w-auto",
-  xl: "h-28 w-auto"
+  xl: "h-24 w-auto"
 };
 
 export default function Logo({ 
