@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
       focusAreas,
       priceDollars,
       alumniSchool,
-      avatarUrl
+      avatarUrl,
+      timezone
     } = body
 
     // Convert price from dollars to cents
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
         focus_areas: focusAreas,
         price_cents: priceCents,
         alumni_school: alumniSchool,
+        timezone: timezone || 'America/Los_Angeles',
         status: 'active'
       })
 

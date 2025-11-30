@@ -26,7 +26,8 @@ export default function MentorOnboardingPage() {
     linkedinUrl: '',
     focusAreas: [] as string[],
     priceDollars: 100,
-    alumniSchool: ''
+    alumniSchool: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   })
 
   const focusAreaOptions = [
@@ -278,6 +279,36 @@ export default function MentorOnboardingPage() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
                     placeholder="University name"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="timezone" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Timezone
+                  </label>
+                  <select
+                    id="timezone"
+                    name="timezone"
+                    required
+                    value={formData.timezone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                  >
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="America/Anchorage">Alaska Time (AKT)</option>
+                    <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                    <option value="Europe/London">London (GMT)</option>
+                    <option value="Europe/Paris">Paris (CET)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                    <option value="Asia/Shanghai">Shanghai (CST)</option>
+                    <option value="Asia/Kolkata">India (IST)</option>
+                    <option value="Australia/Sydney">Sydney (AEDT)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Auto-detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  </p>
                 </div>
               </div>
 

@@ -92,8 +92,7 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
               <p><strong>What happens next?</strong></p>
               <ul>
                 <li>Your coach will review your booking request</li>
-                <li>You'll receive an email once they approve or decline</li>
-                <li>If approved, you'll receive a calendar invite</li>
+                <li>You'll receive a google calendar once booking is verified with meeting details</li>
               </ul>
 
               <p style="text-align: center;">
@@ -177,52 +176,9 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
     });
   }
 
-  // Email to Elevait Admin
-  const adminEmail_promise = resend.emails.send({
-    from: 'Elevait Notifications <notifications@elevait.space>',
-    to: 'tryelevait@gmail.com',
-    subject: `New Booking Request: ${studentName} to ${coachName}`,
-    replyTo: studentEmail,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #1f2937; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-            .info-box { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; }
-            .info-row { margin: 8px 0; font-size: 14px; }
-            .label { font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>📊 Admin Notification: New Booking Request</h2>
-            </div>
-            <div class="content">
-              <div class="info-box">
-                <h3>Booking Details</h3>
-                <div class="info-row"><span class="label">Student:</span> ${studentName} (${studentEmail})</div>
-                <div class="info-row"><span class="label">Coach:</span> ${coachName} (${coachEmail})</div>
-                <div class="info-row"><span class="label">Date:</span> ${bookingDate}</div>
-                <div class="info-row"><span class="label">Time:</span> ${bookingTime}</div>
-                <div class="info-row"><span class="label">Duration:</span> ${duration}</div>
-                ${sessionNotes ? `<div class="info-row"><span class="label">Notes:</span> ${sessionNotes}</div>` : ''}
-                <div class="info-row"><span class="label">Status:</span> Pending Coach Approval</div>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  });
-
   // Wait for all emails to send (only include coach email if address exists)
-  const emailPromises = [studentEmail_promise, adminEmail_promise];
-  const recipients = ['student', 'admin'];
+  const emailPromises = [studentEmail_promise];
+  const recipients = ['student'];
   
   if (coachEmail && coachEmail_promise) {
     emailPromises.push(coachEmail_promise);
@@ -387,51 +343,9 @@ export async function sendCancellationEmails(data: CancellationEmailData) {
     });
   }
 
-  // Email to Elevait Admin
-  const adminEmail_promise = resend.emails.send({
-    from: 'Elevait Notifications <notifications@elevait.space>',
-    to: 'tryelevait@gmail.com',
-    subject: `Session Cancelled: ${studentName} and ${coachName}`,
-    replyTo: studentEmail,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #1f2937; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-            .info-box { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; }
-            .info-row { margin: 8px 0; font-size: 14px; }
-            .label { font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>🚫 Admin Notification: Session Cancelled</h2>
-            </div>
-            <div class="content">
-              <div class="info-box">
-                <h3>Cancellation Details</h3>
-                <div class="info-row"><span class="label">Student:</span> ${studentName} (${studentEmail})</div>
-                <div class="info-row"><span class="label">Coach:</span> ${coachName} (${coachEmail})</div>
-                <div class="info-row"><span class="label">Date:</span> ${bookingDate}</div>
-                <div class="info-row"><span class="label">Time:</span> ${bookingTime}</div>
-                <div class="info-row"><span class="label">Cancelled By:</span> ${cancelledBy === 'coach' ? 'Coach' : 'Student'}</div>
-                <div class="info-row"><span class="label">Reason:</span> ${cancellationReason}</div>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `
-  });
-
   // Wait for all emails to send (only include coach email if address exists)
-  const emailPromises = [studentEmail_promise, adminEmail_promise];
-  const recipients = ['student', 'admin'];
+  const emailPromises = [studentEmail_promise];
+  const recipients = ['student'];
   
   if (coachEmail && coachEmail_promise) {
     emailPromises.push(coachEmail_promise);

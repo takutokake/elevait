@@ -218,9 +218,6 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                 <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
                   <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Get in Touch</h3>
                   <div className="space-y-3">
-                    <button className="w-full bg-[#0ea5e9] text-white py-3 rounded-lg font-semibold hover:bg-[#0ea5e9]/90 transition-colors">
-                      Send Message
-                    </button>
                     {mentor.mentor_data?.linkedin_url && (
                       <a
                         href={mentor.mentor_data.linkedin_url}

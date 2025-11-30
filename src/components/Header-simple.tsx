@@ -126,54 +126,56 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
 
   // Landing page header
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
-      <div className="flex items-center flex-1">
-        <Logo size="lg" href="/" />
-      </div>
-      
-      <div className="hidden lg:flex items-center justify-center flex-1">
-        <nav className="flex items-center gap-8">
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
-            Coaches
-          </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/upcoming">
-            Upcoming
-          </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/about">
-            About
-          </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/blog">
-            Blog
-          </Link>
-        </nav>
-      </div>
-      
-      <div className="hidden lg:flex gap-2 flex-1 justify-end">
-        {isLoading ? (
-          <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
-        ) : currentUser ? (
-          <UserAvatar />
-        ) : (
-          <>
-            <Link href="/login" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
-              <span className="truncate">Log In</span>
+    <header className="sticky top-0 z-50 flex items-center justify-center whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
+      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+        <div className="flex items-center">
+          <Logo size="lg" href="/" />
+        </div>
+        
+        <div className="hidden lg:flex items-center justify-center absolute left-1/2 -translate-x-1/2">
+          <nav className="flex items-center gap-8">
+            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
+              Coaches
             </Link>
-            <Link href="/signup" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
-              <span className="truncate">Get Started</span>
+            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
+              Job Board
             </Link>
-          </>
-        )}
-      </div>
-      
-      <div className="lg:hidden">
-        <button 
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <svg className="w-6 h-6 text-[#333333] dark:text-[#F5F5F5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/about">
+              About
+            </Link>
+            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/blog">
+              Blog
+            </Link>
+          </nav>
+        </div>
+        
+        <div className="hidden lg:flex gap-2">
+          {isLoading ? (
+            <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+          ) : currentUser ? (
+            <UserAvatar />
+          ) : (
+            <>
+              <Link href="/login" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
+                <span className="truncate">Log In</span>
+              </Link>
+              <Link href="/signup" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
+                <span className="truncate">Get Started</span>
+              </Link>
+            </>
+          )}
+        </div>
+        
+        <div className="lg:hidden">
+          <button 
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <svg className="w-6 h-6 text-[#333333] dark:text-[#F5F5F5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
       </div>
       
       {/* Mobile menu */}
@@ -183,8 +185,8 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/coaches">
               Coaches
             </Link>
-            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/upcoming">
-              Upcoming
+            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/jobs">
+              Job Board
             </Link>
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/about">
               About

@@ -62,8 +62,25 @@ export default function BookingModal({
   const availableDates = useMemo(() => {
     const dates = new Set<string>()
     availabilitySlots.forEach((slot) => {
+      // Parse the UTC time and convert to the slot's timezone
+      const slotTimezone = slot.timezone || getUserTimezone()
       const date = new Date(slot.start_time)
-      dates.add(date.toISOString().split('T')[0])
+      
+      // Get the date in the slot's timezone (coach's timezone)
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: slotTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }
+      const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date)
+      const year = parts.find(p => p.type === 'year')?.value
+      const month = parts.find(p => p.type === 'month')?.value
+      const day = parts.find(p => p.type === 'day')?.value
+      
+      if (year && month && day) {
+        dates.add(`${year}-${month}-${day}`)
+      }
     })
     return Array.from(dates).sort()
   }, [availabilitySlots])
@@ -78,8 +95,22 @@ export default function BookingModal({
       
       availabilitySlots.forEach(slot => {
         const slotDate = new Date(slot.start_time)
+        const slotTimezone = slot.timezone || getUserTimezone()
+        
+        // Get the date in the slot's timezone
+        const options: Intl.DateTimeFormatOptions = {
+          timeZone: slotTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }
+        const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(slotDate)
+        const year = parts.find(p => p.type === 'year')?.value
+        const month = parts.find(p => p.type === 'month')?.value
+        const day = parts.find(p => p.type === 'day')?.value
+        const slotDateStr = `${year}-${month}-${day}`
+        
         const selectedDateStr = selectedDate.toISOString().split('T')[0]
-        const slotDateStr = slotDate.toISOString().split('T')[0]
         
         // Only include slots from the selected date
         if (slotDateStr === selectedDateStr && slot.availableSubSlots) {
@@ -179,12 +210,14 @@ export default function BookingModal({
 
     setSubmitting(true)
     try {
-      const response = await fetch('/api/bookings', {
+      // Create Stripe checkout session instead of directly creating booking
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          mentorId: coachId,
           slotId: slot.id,
           bookingStartTime: selectedStartTime.toISOString(),
           bookingEndTime: selectedEndTime.toISOString(),
@@ -195,30 +228,16 @@ export default function BookingModal({
       })
 
       if (response.ok) {
-        toast.success('Booking created successfully!')
-        onBookingComplete()
-        onClose()
+        const { url } = await response.json()
+        // Redirect to Stripe checkout
+        window.location.href = url
       } else {
         const errorData = await response.json()
-        
-        // Handle 409 conflict - time slot was just taken
-        if (response.status === 409) {
-          toast.error('That time was just taken by another student. Please select a different time.', {
-            autoClose: 5000,
-          })
-          // Reset to time selection step
-          setSelectedStartTime(null)
-          setSelectedDuration(60)
-          setStep('time')
-          // Trigger availability refresh
-          onBookingComplete()
-        } else {
-          toast.error(errorData.error || 'Failed to create booking')
-        }
+        toast.error(errorData.error || 'Failed to initiate payment')
       }
     } catch (error) {
-      console.error('Booking error:', error)
-      toast.error('An error occurred while creating the booking')
+      console.error('Checkout error:', error)
+      toast.error('An error occurred while initiating payment')
     } finally {
       setSubmitting(false)
     }
