@@ -3,9 +3,14 @@ import Stripe from 'stripe'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { sendBookingRequestEmails } from '@/lib/emailService'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-10-29.clover',
-})
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not set')
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-10-29.clover',
+  })
+}
 
 export async function POST(request: NextRequest) {
   console.log('📞 Create booking from payment endpoint called')
@@ -33,6 +38,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Retrieving Stripe session:', sessionId)
 
     // Retrieve the checkout session from Stripe
+    const stripe = getStripe()
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
     if (session.payment_status !== 'paid') {

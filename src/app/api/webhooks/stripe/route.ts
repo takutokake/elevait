@@ -3,11 +3,21 @@ import Stripe from 'stripe'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
 import { sendBookingRequestEmails } from '@/lib/emailService'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-10-29.clover',
-})
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not set')
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-10-29.clover',
+  })
+}
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+function getWebhookSecret() {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not set')
+  }
+  return process.env.STRIPE_WEBHOOK_SECRET
+}
 
 export async function POST(request: NextRequest) {
   console.log('🔔 Webhook received!')
@@ -29,6 +39,8 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event
 
     try {
+      const stripe = getStripe()
+      const webhookSecret = getWebhookSecret()
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
       console.log('✅ Webhook signature verified, event type:', event.type)
     } catch (err) {
