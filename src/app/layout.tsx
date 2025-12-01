@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +17,8 @@ export const metadata: Metadata = {
   title: "Elevait - Personalized PM Coaching",
   description: "Connect with elite product management coaches and accelerate your career. Personalized coaching for students and new grads pursuing PM roles.",
   icons: {
-    icon: "/images/Elevait_logo.png",
-    apple: "/images/Elevait_logo.png",
+    icon: "/images/Elevait_Solo_Logo.png",
+    apple: "/images/Elevait_Solo_Logo.png",
   },
   openGraph: {
     title: "Elevait - Personalized PM Coaching",
@@ -38,6 +39,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
