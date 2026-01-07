@@ -1,27 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser, getSupabaseServerClient } from '@/lib/supabaseServer'
+import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
+import { studentOnboardingSchema } from '@/lib/validationSchemas'
+import { sanitizeText, sanitizeUrl, sanitizeStringArray } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is authenticated
+    // SECURITY: Check if user is authenticated
     const { user } = await getSessionUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse request body
+    // SECURITY: Apply rate limiting (100 requests per 15 minutes)
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const {
-      currentInterest,
-      currentSchool,
-      alumniSchool,
-      track,
-      pmFocusAreas,
-      priceRangeMinDollars,
-      priceRangeMaxDollars,
-      avatarUrl,
-      referredBy
-    } = body
+    
+    let validatedData
+    try {
+      validatedData = studentOnboardingSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
+    const currentInterest = sanitizeText(validatedData.currentInterest, 200)
+    const currentSchool = sanitizeText(validatedData.currentSchool, 200)
+    const alumniSchool = sanitizeText(validatedData.alumniSchool, 200)
+    const track = sanitizeText(validatedData.track, 100)
+    const pmFocusAreas = sanitizeStringArray(validatedData.pmFocusAreas)
+    const priceRangeMinDollars = validatedData.priceRangeMinDollars
+    const priceRangeMaxDollars = validatedData.priceRangeMaxDollars
+    const avatarUrl = sanitizeUrl(validatedData.avatarUrl)
+    const referredBy = sanitizeText(validatedData.referredBy, 200)
 
     // Convert price range from dollars to cents
     const priceRangeMinCents = Math.round(priceRangeMinDollars * 100)
@@ -55,9 +76,9 @@ export async function POST(request: NextRequest) {
       })
 
     if (studentError) {
-      console.error('Error upserting student:', studentError)
+      console.error('[Security] Error upserting student:', studentError)
       return NextResponse.json(
-        { error: 'Failed to save student information' },
+        { error: sanitizeDatabaseError(studentError) },
         { status: 500 }
       )
     }
@@ -96,19 +117,15 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
 
     if (profileError) {
-      console.error('Error updating profile:', profileError)
+      console.error('[Security] Error updating profile:', profileError)
       return NextResponse.json(
-        { error: 'Failed to update profile' },
+        { error: sanitizeDatabaseError(profileError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error in student onboarding:', error)
-    return NextResponse.json(
-      { error: 'An unexpected error occurred' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to complete student onboarding', 500)
   }
 }

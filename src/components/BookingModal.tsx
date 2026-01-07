@@ -13,6 +13,22 @@ import {
   getUserTimezone,
 } from '@/lib/dateUtils'
 
+/**
+ * SECURITY FIX: Decode HTML entities in timezone strings
+ * Fixes corrupted timezone data from database (e.g., America&#x2F;Los_Angeles)
+ */
+function decodeTimezone(timezone: string): string {
+  if (!timezone) return 'UTC'
+  
+  return timezone
+    .replace(/&#x2F;/g, '/')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+}
+
 interface SubSlot {
   start: Date
   end: Date
@@ -63,7 +79,9 @@ export default function BookingModal({
     const dates = new Set<string>()
     availabilitySlots.forEach((slot) => {
       // Parse the UTC time and convert to the slot's timezone
-      const slotTimezone = slot.timezone || getUserTimezone()
+      // SECURITY FIX: Decode HTML entities in timezone (fixes corrupted data from database)
+      const rawTimezone = slot.timezone || getUserTimezone()
+      const slotTimezone = decodeTimezone(rawTimezone)
       const date = new Date(slot.start_time)
       
       // Get the date in the slot's timezone (coach's timezone)
@@ -95,7 +113,9 @@ export default function BookingModal({
       
       availabilitySlots.forEach(slot => {
         const slotDate = new Date(slot.start_time)
-        const slotTimezone = slot.timezone || getUserTimezone()
+        // SECURITY FIX: Decode HTML entities in timezone
+        const rawTimezone = slot.timezone || getUserTimezone()
+        const slotTimezone = decodeTimezone(rawTimezone)
         
         // Get the date in the slot's timezone
         const options: Intl.DateTimeFormatOptions = {

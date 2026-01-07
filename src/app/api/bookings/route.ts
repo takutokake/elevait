@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { isValidBookingDuration, isPastDate, validateLeadTime } from '@/lib/dateUtils'
 import { sendBookingRequestEmails } from '@/lib/emailService'
+import { checkRateLimit, bookingRateLimiter, readRateLimiter } from '@/lib/rateLimit'
+import { createBookingSchema, updateBookingSchema } from '@/lib/validationSchemas'
+import { sanitizeEmail, sanitizePhone, sanitizeText, sanitizeUuid } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 /**
  * POST /api/bookings
@@ -20,7 +25,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply booking rate limiting (10 bookings per hour)
+    const rateLimitResult = await checkRateLimit(request, bookingRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
+    
+    let validatedData
+    try {
+      validatedData = createBookingSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
     const {
       slotId,
       bookingStartTime,
@@ -28,7 +52,21 @@ export async function POST(request: NextRequest) {
       learnerEmail,
       learnerPhone,
       sessionNotes,
-    } = body
+    } = {
+      slotId: sanitizeUuid(validatedData.slotId),
+      bookingStartTime: validatedData.bookingStartTime,
+      bookingEndTime: validatedData.bookingEndTime,
+      learnerEmail: sanitizeEmail(validatedData.learnerEmail || user.email || ''),
+      learnerPhone: sanitizePhone(validatedData.learnerPhone),
+      sessionNotes: sanitizeText(validatedData.sessionNotes, 1000),
+    }
+
+    if (!slotId) {
+      return NextResponse.json(
+        { error: 'Invalid slot ID format' },
+        { status: 400 }
+      )
+    }
 
     // Validate required fields
     if (!slotId || !bookingStartTime || !bookingEndTime) {
@@ -86,9 +124,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Create booking error:', error)
+      console.error('[Security] Create booking error:', error)
 
-      // Handle specific error messages from the function
+      // SECURITY: Handle specific error messages without leaking internal details
       if (error.message.includes('not found')) {
         return NextResponse.json(
           { error: 'Availability slot not found' },
@@ -117,8 +155,9 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // SECURITY: Don't leak database error details
       return NextResponse.json(
-        { error: 'Failed to create booking', details: error.message },
+        { error: sanitizeDatabaseError(error) },
         { status: 500 }
       )
     }
@@ -131,7 +170,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError) {
-      console.error('Fetch booking error:', fetchError)
+      console.error('[Security] Fetch booking error:', fetchError)
       return NextResponse.json(
         { error: 'Booking created but failed to fetch details' },
         { status: 500 }
@@ -194,11 +233,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ booking, bookingId: data })
   } catch (error) {
-    console.error('API /bookings POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to create booking', 500)
   }
 }
 
@@ -217,6 +252,12 @@ export async function GET(request: NextRequest) {
         { error: 'Unauthorized' },
         { status: 401 }
       )
+    }
+
+    // SECURITY: Apply read rate limiting (200 requests per 15 minutes)
+    const rateLimitResult = await checkRateLimit(request, readRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
     }
 
     const { searchParams } = new URL(request.url)
@@ -255,20 +296,16 @@ export async function GET(request: NextRequest) {
     const { data: bookings, error: bookingsError } = await query
 
     if (bookingsError) {
-      console.error('Fetch bookings error:', bookingsError)
+      console.error('[Security] Fetch bookings error:', bookingsError)
       return NextResponse.json(
-        { error: 'Failed to fetch bookings' },
+        { error: sanitizeDatabaseError(bookingsError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ bookings: bookings || [], count: bookings?.length || 0 })
   } catch (error) {
-    console.error('API /bookings GET error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to fetch bookings', 500)
   }
 }
 
@@ -289,8 +326,36 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply standard rate limiting
+    const rateLimitResult = await checkRateLimit(request, bookingRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const { bookingId, status, cancellationReason } = body
+    
+    let validatedData
+    try {
+      validatedData = updateBookingSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
+    const bookingId = sanitizeUuid(validatedData.bookingId)
+    const status = validatedData.status
+    const cancellationReason = sanitizeText(validatedData.cancellationReason, 500)
+
+    if (!bookingId) {
+      return NextResponse.json(
+        { error: 'Invalid booking ID format' },
+        { status: 400 }
+      )
+    }
 
     if (!bookingId || !status) {
       return NextResponse.json(
@@ -353,19 +418,15 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Update booking error:', updateError)
+      console.error('[Security] Update booking error:', updateError)
       return NextResponse.json(
-        { error: 'Failed to update booking' },
+        { error: sanitizeDatabaseError(updateError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ booking: updatedBooking })
   } catch (error) {
-    console.error('API /bookings PATCH error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to update booking', 500)
   }
 }

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { sendCancellationEmails } from '@/lib/emailService'
+import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
+import { cancelBookingSchema } from '@/lib/validationSchemas'
+import { sanitizeText } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 /**
  * POST /api/bookings/[id]/cancel
@@ -22,8 +27,27 @@ export async function POST(
       )
     }
 
+    // SECURITY: Apply rate limiting
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const { reason, cancelledBy } = body
+    
+    let validatedData
+    try {
+      validatedData = cancelBookingSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    const reason = sanitizeText(validatedData.reason, 500)
+    const cancelledBy = validatedData.cancelledBy
 
     // Fetch booking to verify ownership and status
     const { data: booking, error: fetchError } = await supabase
@@ -86,9 +110,9 @@ export async function POST(
       .single()
 
     if (updateError) {
-      console.error('Cancel booking error:', updateError)
+      console.error('[Security] Cancel booking error:', updateError)
       return NextResponse.json(
-        { error: 'Failed to cancel booking' },
+        { error: sanitizeDatabaseError(updateError) },
         { status: 500 }
       )
     }
@@ -127,10 +151,6 @@ export async function POST(
       message: 'Booking cancelled successfully'
     })
   } catch (error) {
-    console.error('API /bookings/[id]/cancel POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to cancel booking', 500)
   }
 }

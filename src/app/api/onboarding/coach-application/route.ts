@@ -1,33 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser, getSupabaseServerClient } from '@/lib/supabaseServer'
+import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
+import { coachApplicationSchema } from '@/lib/validationSchemas'
+import { sanitizeText, sanitizeUrl, sanitizeStringArray } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is authenticated
+    // SECURITY: Check if user is authenticated
     const { user } = await getSessionUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse request body
+    // SECURITY: Apply rate limiting (100 requests per 15 minutes)
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const {
-      currentTitle,
-      currentCompany,
-      yearsExperience,
-      linkedinUrl,
-      focusAreas,
-      priceDollars,
-      alumniSchool,
-      shortDescription,
-      aboutMe,
-      jobTypeTags,
-      specialties,
-      successfulCompanies,
-      companiesGotOffers,
-      companiesInterviewed,
-      avatarUrl
-    } = body
+    
+    let validatedData
+    try {
+      validatedData = coachApplicationSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
+    const currentTitle = sanitizeText(validatedData.currentTitle, 200)
+    const currentCompany = sanitizeText(validatedData.currentCompany, 200)
+    const yearsExperience = validatedData.yearsExperience
+    const linkedinUrl = sanitizeUrl(validatedData.linkedinUrl)
+    const focusAreas = sanitizeStringArray(validatedData.focusAreas)
+    const priceDollars = validatedData.priceDollars
+    const alumniSchool = sanitizeText(validatedData.alumniSchool, 200)
+    const shortDescription = sanitizeText(validatedData.shortDescription, 500)
+    const aboutMe = sanitizeText(validatedData.aboutMe, 2000)
+    const jobTypeTags = sanitizeStringArray(validatedData.jobTypeTags)
+    const specialties = sanitizeStringArray(validatedData.specialties)
+    const successfulCompanies = sanitizeStringArray(validatedData.successfulCompanies)
+    const companiesGotOffers = sanitizeStringArray(validatedData.companiesGotOffers)
+    const companiesInterviewed = sanitizeStringArray(validatedData.companiesInterviewed)
+    const avatarUrl = sanitizeUrl(validatedData.avatarUrl)
 
     // Convert price from dollars to cents
     const priceCents = Math.round(priceDollars * 100)
@@ -57,9 +78,9 @@ export async function POST(request: NextRequest) {
       })
 
     if (applicationError) {
-      console.error('Error inserting mentor application:', applicationError)
+      console.error('[Security] Error inserting mentor application:', applicationError)
       return NextResponse.json(
-        { error: 'Failed to submit coach application' },
+        { error: sanitizeDatabaseError(applicationError) },
         { status: 500 }
       )
     }
@@ -79,19 +100,15 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
 
     if (profileError) {
-      console.error('Error updating profile:', profileError)
+      console.error('[Security] Error updating profile:', profileError)
       return NextResponse.json(
-        { error: 'Failed to update profile' },
+        { error: sanitizeDatabaseError(profileError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error in coach application:', error)
-    return NextResponse.json(
-      { error: 'An unexpected error occurred' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to submit coach application', 500)
   }
 }

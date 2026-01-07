@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
+import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
+import { updateProfileSchema } from '@/lib/validationSchemas'
+import { sanitizeText, sanitizeUrl } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await getSupabaseServerClient()
     
-    // Get current user
+    // SECURITY: Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
     if (userError || !user) {
@@ -15,8 +20,28 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply rate limiting
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const { full_name, avatar_url } = body
+    
+    let validatedData
+    try {
+      validatedData = updateProfileSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
+    const full_name = sanitizeText(validatedData.full_name, 200)
+    const avatar_url = sanitizeUrl(validatedData.avatar_url)
 
     // Update profile
     const { data, error } = await supabase
@@ -31,19 +56,15 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error updating profile:', error)
+      console.error('[Security] Error updating profile:', error)
       return NextResponse.json(
-        { error: 'Failed to update profile' },
+        { error: sanitizeDatabaseError(error) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ data })
   } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to update profile', 500)
   }
 }

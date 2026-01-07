@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { checkRateLimit, paymentRateLimiter } from '@/lib/rateLimit'
+import { createCheckoutSessionSchema } from '@/lib/validationSchemas'
+import { sanitizeEmail, sanitizePhone, sanitizeText, sanitizeUuid } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -22,16 +27,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply strict payment rate limiting (5 checkout sessions per hour)
+    const rateLimitResult = await checkRateLimit(request, paymentRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const {
-      mentorId,
-      slotId,
-      bookingStartTime,
-      bookingEndTime,
-      learnerEmail,
-      learnerPhone,
-      sessionNotes,
-    } = body
+    
+    let validatedData
+    try {
+      validatedData = createCheckoutSessionSchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    // SECURITY: Sanitize inputs
+    const mentorId = sanitizeUuid(validatedData.mentorId)
+    const slotId = sanitizeUuid(validatedData.slotId)
+    const bookingStartTime = validatedData.bookingStartTime
+    const bookingEndTime = validatedData.bookingEndTime
+    const learnerEmail = sanitizeEmail(validatedData.learnerEmail || user.email || '')
+    const learnerPhone = sanitizePhone(validatedData.learnerPhone)
+    const sessionNotes = sanitizeText(validatedData.sessionNotes, 1000)
+
+    if (!mentorId || !slotId) {
+      return NextResponse.json(
+        { error: 'Invalid mentor ID or slot ID format' },
+        { status: 400 }
+      )
+    }
 
     // Validate required fields
     if (!mentorId || !slotId || !bookingStartTime || !bookingEndTime) {
@@ -106,10 +135,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
-    console.error('Stripe checkout session error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create checkout session' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to create checkout session', 500)
   }
 }

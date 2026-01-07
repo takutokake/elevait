@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
+import { createRateLimitResponse, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
 
 /**
  * POST /api/bookings/[id]/approve
@@ -21,6 +23,12 @@ export async function POST(
       )
     }
 
+    // SECURITY: Apply rate limiting
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
     // Call the approve_booking function
     const { data, error } = await supabase.rpc('approve_booking', {
       p_booking_id: bookingId,
@@ -28,9 +36,9 @@ export async function POST(
     })
 
     if (error) {
-      console.error('Approve booking error:', error)
+      console.error('[Security] Approve booking error:', error)
       return NextResponse.json(
-        { error: error.message || 'Failed to approve booking' },
+        { error: sanitizeDatabaseError(error) },
         { status: 500 }
       )
     }
@@ -47,10 +55,6 @@ export async function POST(
       booking: data
     })
   } catch (error) {
-    console.error('API /bookings/[id]/approve POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to approve booking', 500)
   }
 }

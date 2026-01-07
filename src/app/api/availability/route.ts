@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { getUserTimezone } from '@/lib/dateUtils'
+import { checkRateLimit, standardRateLimiter, readRateLimiter } from '@/lib/rateLimit'
+import { createAvailabilitySchema } from '@/lib/validationSchemas'
+import { sanitizeText, sanitizeUuid, sanitizeTimezone } from '@/lib/sanitization'
+import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { ZodError } from 'zod'
 
 /**
  * POST /api/availability
@@ -19,6 +24,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply rate limiting
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
     // Verify mentor role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -33,8 +44,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY: Parse and validate request body
     const body = await request.json()
-    const { slots, timezone } = body
+    
+    let validatedData
+    try {
+      validatedData = createAvailabilitySchema.parse(body)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleValidationError(error)
+      }
+      throw error
+    }
+
+    const slots = validatedData.slots
+    const timezone = sanitizeTimezone(validatedData.timezone)
 
     if (!slots || !Array.isArray(slots) || slots.length === 0) {
       return NextResponse.json(
@@ -100,15 +124,9 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (insertError) {
-      console.error('Insert slots error:', insertError)
-      console.error('Error details:', {
-        code: insertError.code,
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint
-      })
+      console.error('[Security] Insert slots error:', insertError)
       
-      // Check if table doesn't exist
+      // SECURITY: Check for specific errors without leaking details
       if (insertError.code === '42P01') {
         return NextResponse.json(
           { error: 'Database tables not set up. Please run the migration first.', code: 'TABLE_NOT_FOUND' },
@@ -116,7 +134,6 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // Check for overlap constraint violation
       if (insertError.code === '23P01') {
         return NextResponse.json(
           { error: 'Slot overlaps with existing availability', code: 'OVERLAP' },
@@ -125,18 +142,14 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Failed to create availability slots', details: insertError.message },
+        { error: sanitizeDatabaseError(insertError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ slots: insertedSlots, count: insertedSlots.length })
   } catch (error) {
-    console.error('API /availability POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to create availability slots', 500)
   }
 }
 
@@ -148,8 +161,15 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await getSupabaseServerClient()
+
+    // SECURITY: Apply read rate limiting
+    const rateLimitResult = await checkRateLimit(request, readRateLimiter)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
     const { searchParams } = new URL(request.url)
-    const mentorId = searchParams.get('mentorId')
+    const mentorId = sanitizeUuid(searchParams.get('mentorId'))
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const status = searchParams.get('status') || 'open'
@@ -189,15 +209,9 @@ export async function GET(request: NextRequest) {
     const { data: slots, error: slotsError } = await query
 
     if (slotsError) {
-      console.error('Fetch slots error:', slotsError)
-      console.error('Error details:', {
-        code: slotsError.code,
-        message: slotsError.message,
-        details: slotsError.details,
-        hint: slotsError.hint
-      })
+      console.error('[Security] Fetch slots error:', slotsError)
       
-      // Check if table doesn't exist
+      // SECURITY: Check for specific errors without leaking details
       if (slotsError.code === '42P01') {
         return NextResponse.json(
           { error: 'Database tables not set up. Please run the migration first.', code: 'TABLE_NOT_FOUND' },
@@ -206,18 +220,14 @@ export async function GET(request: NextRequest) {
       }
       
       return NextResponse.json(
-        { error: 'Failed to fetch availability slots', details: slotsError.message },
+        { error: sanitizeDatabaseError(slotsError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ slots: slots || [], count: slots?.length || 0 })
   } catch (error) {
-    console.error('API /availability GET error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to fetch availability slots', 500)
   }
 }
 
@@ -238,8 +248,14 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // SECURITY: Apply rate limiting
+    const rateLimitResult = await checkRateLimit(request, standardRateLimiter, user.id)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
+    }
+
     const { searchParams } = new URL(request.url)
-    const slotId = searchParams.get('slotId')
+    const slotId = sanitizeUuid(searchParams.get('slotId'))
 
     if (!slotId) {
       return NextResponse.json(
@@ -278,19 +294,15 @@ export async function DELETE(request: NextRequest) {
       .eq('id', slotId)
 
     if (deleteError) {
-      console.error('Delete slot error:', deleteError)
+      console.error('[Security] Delete slot error:', deleteError)
       return NextResponse.json(
-        { error: 'Failed to delete slot' },
+        { error: sanitizeDatabaseError(deleteError) },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ success: true, message: 'Slot deleted successfully' })
   } catch (error) {
-    console.error('API /availability DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSafeErrorResponse(error, 'Failed to delete availability slot', 500)
   }
 }
