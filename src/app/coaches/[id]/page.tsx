@@ -27,7 +27,7 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
   const shortDescription = mentor.mentor_data?.short_description;
   const aboutMe = mentor.mentor_data?.about_me;
   const jobTypeTags = mentor.mentor_data?.job_type_tags || [];
-  const specialties = mentor.mentor_data?.specialties || mentor.mentor_data?.focus_areas || [];
+  const focusAreas = mentor.mentor_data?.focus_areas || [];
   const successfulCompanies = mentor.mentor_data?.successful_companies || [];
   const companiesGotOffers = mentor.mentor_data?.companies_got_offers || [];
   const companiesInterviewed = mentor.mentor_data?.companies_interviewed || [];
@@ -108,20 +108,6 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                       {jobTypeTags.map((tag, index) => (
                         <span key={index} className="bg-purple-100/80 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-full text-sm font-medium capitalize">
                           {tag.replace(/_/g, ' ')}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Specialties */}
-                {specialties.length > 0 && (
-                  <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                    <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#F8FAFC] mb-4">Specialties</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {specialties.map((specialty, index) => (
-                        <span key={index} className="bg-[#0ea5e9]/10 text-[#0ea5e9] px-3 py-1.5 rounded-full text-sm font-medium capitalize">
-                          {specialty}
                         </span>
                       ))}
                     </div>

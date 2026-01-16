@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
     const shortDescription = sanitizeText(validatedData.shortDescription, 500)
     const aboutMe = sanitizeText(validatedData.aboutMe, 2000)
     const jobTypeTags = sanitizeStringArray(validatedData.jobTypeTags)
-    const specialties = sanitizeStringArray(validatedData.specialties)
     const successfulCompanies = sanitizeStringArray(validatedData.successfulCompanies)
     const companiesGotOffers = sanitizeStringArray(validatedData.companiesGotOffers)
     const companiesInterviewed = sanitizeStringArray(validatedData.companiesInterviewed)
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
         short_description: shortDescription,
         about_me: aboutMe,
         job_type_tags: jobTypeTags,
-        specialties: specialties,
         successful_companies: successfulCompanies,
         companies_got_offers: companiesGotOffers,
         companies_interviewed: companiesInterviewed

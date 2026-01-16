@@ -14,7 +14,6 @@ export interface MentorProfile {
   job_title: string | null
   years_of_experience: number | null
   hourly_rate: number | null
-  specialties: string[] | null
   focus_areas: string[] | null
   created_at: string
   updated_at: string
@@ -32,7 +31,6 @@ export interface MentorData {
   short_description: string | null
   about_me: string | null
   job_type_tags: string[] | null
-  specialties: string[] | null
   successful_companies: string[] | null
   companies_got_offers: string[] | null
   companies_interviewed: string[] | null

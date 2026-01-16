@@ -44,16 +44,6 @@ export default function CoachProfileLoading() {
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 animate-pulse" />
                   </div>
                 </div>
-
-                {/* Specialties Skeleton */}
-                <div className="bg-[#FFFFFF] dark:bg-[#0f172a] rounded-xl border border-[#E2E8F0] dark:border-[#1e293b] p-6 shadow-sm">
-                  <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Sidebar Skeleton */}

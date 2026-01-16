@@ -48,7 +48,6 @@ export async function PATCH(request: NextRequest) {
     const short_description = sanitizeText(validatedData.short_description, 500)
     const about_me = sanitizeText(validatedData.about_me, 2000)
     const focus_areas = sanitizeStringArray(validatedData.focus_areas)
-    const specialties = sanitizeStringArray(validatedData.specialties)
     const job_type_tags = sanitizeStringArray(validatedData.job_type_tags)
     const key_achievements = sanitizeStringArray(validatedData.key_achievements)
     const successful_companies = sanitizeStringArray(validatedData.successful_companies)
@@ -78,7 +77,6 @@ export async function PATCH(request: NextRequest) {
           short_description,
           about_me,
           focus_areas,
-          specialties,
           job_type_tags,
           key_achievements,
           successful_companies,
@@ -106,7 +104,6 @@ export async function PATCH(request: NextRequest) {
           short_description,
           about_me,
           focus_areas,
-          specialties,
           job_type_tags,
           key_achievements,
           successful_companies,

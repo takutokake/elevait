@@ -16,10 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Elevait - Personalized PM Coaching",
   description: "Connect with elite product management coaches and accelerate your career. Personalized coaching for students and new grads pursuing PM roles.",
-  icons: {
-    icon: "/images/Elevait_Solo_Logo.png",
-    apple: "/images/Elevait_Solo_Logo.png",
-  },
   openGraph: {
     title: "Elevait - Personalized PM Coaching",
     description: "Connect with elite product management coaches and accelerate your career.",

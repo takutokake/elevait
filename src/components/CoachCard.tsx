@@ -15,8 +15,8 @@ export default function CoachCard({ mentor }: CoachCardProps) {
   // Use short_description from mentor_data, fallback to bio
   const shortDescription = mentor.mentor_data?.short_description || mentor.bio;
   
-  // Use specialties from mentor_data, fallback to focus_areas
-  const specialties = mentor.mentor_data?.specialties || mentor.mentor_data?.focus_areas || [];
+  // Use focus_areas from mentor_data
+  const focusAreas = mentor.mentor_data?.focus_areas || [];
 
   return (
     <div className="group flex flex-col bg-[#ffffff] dark:bg-[#1F2937] rounded-xl border border-[#E2E8F0] dark:border-[#374151] p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-[#0ea5e9]">
@@ -50,14 +50,14 @@ export default function CoachCard({ mentor }: CoachCardProps) {
         </p>
       )}
       
-      {specialties.length > 0 && (
+      {focusAreas.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {specialties.slice(0, 3).map((specialty, i) => (
+          {focusAreas.slice(0, 3).map((area, i) => (
             <span
               key={i}
               className="text-xs font-medium bg-sky-100/80 dark:bg-sky-900/40 text-[#0ea5e9] px-2.5 py-1 rounded-full capitalize"
             >
-              {specialty}
+              {area}
             </span>
           ))}
         </div>

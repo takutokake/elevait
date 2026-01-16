@@ -28,7 +28,6 @@ export default function MentorSettings() {
     shortDescription: '',
     aboutMe: '',
     focusAreas: [] as string[],
-    specialties: [] as string[],
     jobTypeTags: [] as string[],
     successfulCompanies: [] as string[],
     companiesGotOffers: [] as string[],
@@ -50,16 +49,6 @@ export default function MentorSettings() {
     'Others'
   ]
 
-  const specialtyOptions = [
-    'B2B SaaS',
-    'Consumer Tech',
-    'Fintech',
-    'E-commerce',
-    'AI/ML Products',
-    'Growth PM',
-    'Platform PM',
-    'Technical PM'
-  ]
 
   const jobTypeOptions = [
     'Full-time',
@@ -171,7 +160,6 @@ export default function MentorSettings() {
           shortDescription: mentor.short_description || '',
           aboutMe: mentor.about_me || '',
           focusAreas: mentor.focus_areas || [],
-          specialties: mentor.specialties || [],
           jobTypeTags: mentor.job_type_tags || [],
           successfulCompanies: mentor.successful_companies || [],
           companiesGotOffers: mentor.companies_got_offers || [],
@@ -217,27 +205,55 @@ export default function MentorSettings() {
       })
 
       // Update mentor data (you'll need to create this API endpoint)
+      // Filter out empty/invalid values to prevent validation errors
+      const mentorPayload: any = {}
+      
+      if (formData.currentTitle && formData.currentTitle.trim().length >= 2) {
+        mentorPayload.current_title = formData.currentTitle
+      }
+      if (formData.currentCompany && formData.currentCompany.trim().length >= 2) {
+        mentorPayload.current_company = formData.currentCompany
+      }
+      if (formData.yearsExperience !== undefined && formData.yearsExperience !== null) {
+        mentorPayload.years_experience = formData.yearsExperience
+      }
+      if (formData.linkedinUrl && formData.linkedinUrl.trim()) {
+        mentorPayload.linkedin_url = formData.linkedinUrl
+      }
+      if (formData.alumniSchool && formData.alumniSchool.trim()) {
+        mentorPayload.alumni_school = formData.alumniSchool
+      }
+      if (formData.shortDescription && formData.shortDescription.trim().length >= 10) {
+        mentorPayload.short_description = formData.shortDescription
+      }
+      if (formData.aboutMe && formData.aboutMe.trim().length >= 50) {
+        mentorPayload.about_me = formData.aboutMe
+      }
+      if (formData.focusAreas && formData.focusAreas.length > 0) {
+        mentorPayload.focus_areas = formData.focusAreas
+      }
+      if (formData.jobTypeTags && formData.jobTypeTags.length > 0) {
+        mentorPayload.job_type_tags = formData.jobTypeTags
+      }
+      if (formData.successfulCompanies && formData.successfulCompanies.length > 0) {
+        mentorPayload.successful_companies = formData.successfulCompanies
+      }
+      if (formData.companiesGotOffers && formData.companiesGotOffers.length > 0) {
+        mentorPayload.companies_got_offers = formData.companiesGotOffers
+      }
+      if (formData.companiesInterviewed && formData.companiesInterviewed.length > 0) {
+        mentorPayload.companies_interviewed = formData.companiesInterviewed
+      }
+      if (formData.priceDollars !== undefined && formData.priceDollars !== null) {
+        mentorPayload.price_cents = formData.priceDollars * 100
+      }
+
       const mentorResponse = await fetch('/api/mentor/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          current_title: formData.currentTitle,
-          current_company: formData.currentCompany,
-          years_experience: formData.yearsExperience,
-          linkedin_url: formData.linkedinUrl,
-          alumni_school: formData.alumniSchool,
-          short_description: formData.shortDescription,
-          about_me: formData.aboutMe,
-          focus_areas: formData.focusAreas,
-          specialties: formData.specialties,
-          job_type_tags: formData.jobTypeTags,
-          successful_companies: formData.successfulCompanies,
-          companies_got_offers: formData.companiesGotOffers,
-          companies_interviewed: formData.companiesInterviewed,
-          price_cents: formData.priceDollars * 100
-        })
+        body: JSON.stringify(mentorPayload)
       })
 
       if (profileResponse.ok && mentorResponse.ok) {
@@ -291,15 +307,6 @@ export default function MentorSettings() {
       focusAreas: checked 
         ? [...prev.focusAreas, area]
         : prev.focusAreas.filter(a => a !== area)
-    }))
-  }
-
-  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      specialties: checked 
-        ? [...prev.specialties, specialty]
-        : prev.specialties.filter(s => s !== specialty)
     }))
   }
 
@@ -611,28 +618,6 @@ export default function MentorSettings() {
                     />
                     <label htmlFor={area} className="text-sm text-[#333333] dark:text-white">
                       {area}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Specialties
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {specialtyOptions.map((specialty) => (
-                  <div key={specialty} className="flex items-center space-x-3">
-                    <input
-                      id={`specialty-${specialty}`}
-                      type="checkbox"
-                      checked={formData.specialties.includes(specialty)}
-                      onChange={(e) => handleSpecialtyChange(specialty, e.target.checked)}
-                      className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
-                    />
-                    <label htmlFor={`specialty-${specialty}`} className="text-sm text-[#333333] dark:text-white">
-                      {specialty}
                     </label>
                   </div>
                 ))}
