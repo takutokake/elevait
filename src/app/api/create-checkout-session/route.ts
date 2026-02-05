@@ -48,16 +48,18 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Sanitize inputs
     const mentorId = sanitizeUuid(validatedData.mentorId)
-    const slotId = sanitizeUuid(validatedData.slotId)
+    // Slot ID can be a UUID or a weekly slot ID (weekly-YYYY-MM-DD-HH-MM)
+    const slotId = validatedData.slotId
+    const isWeeklySlot = slotId && slotId.startsWith('weekly-')
     const bookingStartTime = validatedData.bookingStartTime
     const bookingEndTime = validatedData.bookingEndTime
     const learnerEmail = sanitizeEmail(validatedData.learnerEmail || user.email || '')
     const learnerPhone = sanitizePhone(validatedData.learnerPhone)
     const sessionNotes = sanitizeText(validatedData.sessionNotes, 1000)
 
-    if (!mentorId || !slotId) {
+    if (!mentorId) {
       return NextResponse.json(
-        { error: 'Invalid mentor ID or slot ID format' },
+        { error: 'Invalid mentor ID format' },
         { status: 400 }
       )
     }

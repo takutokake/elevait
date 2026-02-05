@@ -11,7 +11,7 @@ import { ZodError } from 'zod'
 /**
  * POST /api/bookings
  * Create a new booking
- * Body: { slotId, bookingStartTime, bookingEndTime, learnerEmail, learnerPhone, sessionNotes }
+ * Body: { slotId, mentorId, bookingStartTime, bookingEndTime, learnerEmail, learnerPhone, sessionNotes, isFreeSession }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,47 +31,28 @@ export async function POST(request: NextRequest) {
       return createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset)
     }
 
-    // SECURITY: Parse and validate request body
+    // SECURITY: Parse request body
     const body = await request.json()
     
-    let validatedData
-    try {
-      validatedData = createBookingSchema.parse(body)
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return handleValidationError(error)
-      }
-      throw error
-    }
-
-    // SECURITY: Sanitize inputs
-    const {
-      slotId,
-      bookingStartTime,
-      bookingEndTime,
-      learnerEmail,
-      learnerPhone,
-      sessionNotes,
-    } = {
-      slotId: sanitizeUuid(validatedData.slotId),
-      bookingStartTime: validatedData.bookingStartTime,
-      bookingEndTime: validatedData.bookingEndTime,
-      learnerEmail: sanitizeEmail(validatedData.learnerEmail || user.email || ''),
-      learnerPhone: sanitizePhone(validatedData.learnerPhone),
-      sessionNotes: sanitizeText(validatedData.sessionNotes, 1000),
-    }
-
-    if (!slotId) {
-      return NextResponse.json(
-        { error: 'Invalid slot ID format' },
-        { status: 400 }
-      )
-    }
+    // Check if this is a free session booking (from weekly availability)
+    const isFreeSession = body.isFreeSession === true
+    const mentorId = body.mentorId
+    
+    // For free sessions with weekly availability, we don't need a real slot ID
+    const slotId = body.slotId
+    const isWeeklySlot = slotId && slotId.startsWith('weekly-')
+    
+    // Sanitize inputs
+    const bookingStartTime = body.bookingStartTime
+    const bookingEndTime = body.bookingEndTime
+    const learnerEmail = sanitizeEmail(body.learnerEmail || user.email || '')
+    const learnerPhone = sanitizePhone(body.learnerPhone)
+    const sessionNotes = sanitizeText(body.sessionNotes, 1000)
 
     // Validate required fields
-    if (!slotId || !bookingStartTime || !bookingEndTime) {
+    if (!bookingStartTime || !bookingEndTime) {
       return NextResponse.json(
-        { error: 'slotId, bookingStartTime, and bookingEndTime are required' },
+        { error: 'bookingStartTime and bookingEndTime are required' },
         { status: 400 }
       )
     }
@@ -87,8 +68,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate minimum duration (60 minutes)
-    if (!isValidBookingDuration(startTime, endTime)) {
+    // Validate minimum duration (60 minutes) - skip for free sessions which may be 30 min
+    if (!isFreeSession && !isValidBookingDuration(startTime, endTime)) {
       return NextResponse.json(
         { error: 'Booking must be at least 60 minutes (1 hour)' },
         { status: 400 }
@@ -103,25 +84,160 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate lead time (24 hours in advance)
-    if (!validateLeadTime(startTime, 24)) {
+    // For free sessions, reduce lead time requirement to 1 hour
+    const requiredLeadTime = isFreeSession ? 1 : 24
+    if (!validateLeadTime(startTime, requiredLeadTime)) {
       return NextResponse.json(
-        { error: 'Bookings must be made at least 24 hours in advance' },
+        { error: isFreeSession 
+          ? 'Bookings must be made at least 1 hour in advance' 
+          : 'Bookings must be made at least 24 hours in advance' },
         { status: 400 }
       )
     }
 
-    // Use the Supabase function to create booking with proper locking
-    const { data, error } = await supabase.rpc('create_booking', {
-      p_availability_slot_id: slotId,
-      p_learner_id: user.id,
-      p_booking_start_time: startTime.toISOString(),
-      p_booking_end_time: endTime.toISOString(),
-      p_learner_email: learnerEmail || user.email || '',
-      p_learner_phone: learnerPhone || null,
-      p_session_notes: sessionNotes || null,
-      p_timezone: 'UTC'
-    })
+    let data, error
+
+    if (isFreeSession && isWeeklySlot && mentorId) {
+      // For free sessions from weekly availability, create booking directly
+      // First verify the mentor exists
+      const { data: mentor, error: mentorError } = await supabase
+        .from('mentors')
+        .select('id, is_active')
+        .eq('id', mentorId)
+        .eq('is_active', true)
+        .single()
+
+      if (mentorError || !mentor) {
+        return NextResponse.json(
+          { error: 'Coach not found or not active' },
+          { status: 404 }
+        )
+      }
+
+      // Check for overlapping bookings
+      const { data: existingBookings, error: checkError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('mentor_id', mentorId)
+        .in('status', ['pending', 'confirmed'])
+        .or(`and(booking_start_time.lt.${endTime.toISOString()},booking_end_time.gt.${startTime.toISOString()})`)
+
+      if (checkError) {
+        console.error('Error checking existing bookings:', checkError)
+      }
+
+      if (existingBookings && existingBookings.length > 0) {
+        return NextResponse.json(
+          { error: 'This time slot is no longer available' },
+          { status: 409 }
+        )
+      }
+
+      // For free sessions from weekly availability, we MUST have an availability slot
+      // because availability_slot_id is NOT NULL in the bookings table
+      
+      // First, check if a slot already exists for this time range
+      const { data: existingSlot } = await supabase
+        .from('availability_slots')
+        .select('id')
+        .eq('mentor_id', mentorId)
+        .gte('start_time', startTime.toISOString())
+        .lte('end_time', endTime.toISOString())
+        .limit(1)
+        .single()
+
+      let tempSlot = existingSlot
+
+      // If no slot exists, create one
+      if (!existingSlot) {
+        const { data: newSlot, error: slotError } = await supabase
+          .from('availability_slots')
+          .insert({
+            mentor_id: mentorId,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+          })
+          .select()
+          .single()
+
+        if (slotError || !newSlot) {
+          console.error('Error creating temp slot:', slotError)
+          return NextResponse.json(
+            { error: 'Failed to create availability slot', details: slotError?.message },
+            { status: 500 }
+          )
+        }
+        
+        tempSlot = newSlot
+      }
+
+      if (!tempSlot) {
+        return NextResponse.json(
+          { error: 'Failed to get availability slot' },
+          { status: 500 }
+        )
+      }
+
+      // Create the booking with the temp slot ID
+      const bookingData: any = {
+        mentor_id: mentorId,
+        learner_id: user.id,
+        availability_slot_id: tempSlot.id,
+        booking_start_time: startTime.toISOString(),
+        booking_end_time: endTime.toISOString(),
+        learner_email: learnerEmail || user.email || '',
+        learner_phone: learnerPhone || null,
+        session_notes: sessionNotes || null,
+        status: 'confirmed',
+        timezone: 'UTC',
+      }
+
+      const { data: newBooking, error: insertError } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Free booking error:', insertError)
+        console.error('Free booking error message:', insertError.message)
+        console.error('Free booking error details:', insertError.details)
+        console.error('Free booking error hint:', insertError.hint)
+        console.error('Free booking error code:', insertError.code)
+        return NextResponse.json(
+          { error: 'Failed to create booking', details: insertError.message, hint: insertError.hint, code: insertError.code },
+          { status: 500 }
+        )
+      }
+
+      data = newBooking.id
+      error = null
+    } else {
+      // For paid sessions or sessions with real availability slots, use the RPC function
+      const sanitizedSlotId = sanitizeUuid(slotId)
+      
+      if (!sanitizedSlotId) {
+        return NextResponse.json(
+          { error: 'Invalid slot ID format' },
+          { status: 400 }
+        )
+      }
+
+      // Use the Supabase function to create booking with proper locking
+      const result = await supabase.rpc('create_booking', {
+        p_availability_slot_id: sanitizedSlotId,
+        p_learner_id: user.id,
+        p_booking_start_time: startTime.toISOString(),
+        p_booking_end_time: endTime.toISOString(),
+        p_learner_email: learnerEmail || user.email || '',
+        p_learner_phone: learnerPhone || null,
+        p_session_notes: sessionNotes || null,
+        p_timezone: 'UTC'
+      })
+      
+      data = result.data
+      error = result.error
+    }
 
     if (error) {
       console.error('[Security] Create booking error:', error)

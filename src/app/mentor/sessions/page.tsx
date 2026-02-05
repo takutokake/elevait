@@ -263,7 +263,7 @@ export default function MentorSessions() {
       const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason || 'No reason provided', cancelledBy: 'mentor' })
+        body: JSON.stringify({ reason: reason || 'No reason provided' })
       })
 
       if (response.ok) {

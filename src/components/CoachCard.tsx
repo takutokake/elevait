@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MentorWithDetails } from "@/types/mentor";
-import { getMentorInitials, formatHourlyRate } from "@/lib/mentorUtils";
+import { getMentorInitials } from "@/lib/mentorUtils";
 
 interface CoachCardProps {
   mentor: MentorWithDetails;
@@ -8,75 +8,112 @@ interface CoachCardProps {
 
 export default function CoachCard({ mentor }: CoachCardProps) {
   const initials = getMentorInitials(mentor.full_name);
-  const hourlyRate = formatHourlyRate(mentor.mentor_data?.price_cents);
-  const rating = 0; // Will be implemented later
-  const reviewCount = 0; // Will be implemented later
-  
-  // Use short_description from mentor_data, fallback to bio
-  const shortDescription = mentor.mentor_data?.short_description || mentor.bio;
+  const displayName = mentor.full_name || 'Anonymous Coach';
+  const displayTitle = mentor.mentor_data?.current_title || 'Product Manager';
+  const displayCompany = mentor.mentor_data?.current_company || '';
   
   // Use focus_areas from mentor_data
-  const focusAreas = mentor.mentor_data?.focus_areas || [];
+  const focusAreas = mentor.mentor_data?.focus_areas?.slice(0, 3) || [];
+
+  // Use pricing_model and price_cents to determine pricing display
+  const priceCents = mentor.mentor_data?.price_cents;
+  const pricingModel = mentor.mentor_data?.pricing_model || 'free';
+  
+  // Determine pricing display - pricing_model is the source of truth
+  const isFree = pricingModel === 'free';
+  const isBoth = pricingModel === 'both' && priceCents && priceCents > 0;
+  const isPaid = pricingModel === 'paid' && priceCents && priceCents > 0;
+  const paidPrice = priceCents ? `$${(priceCents / 100).toFixed(0)}` : null;
+  const displayPrice = isBoth 
+    ? `FREE + ${paidPrice}` 
+    : isFree 
+      ? 'FREE' 
+      : `${paidPrice}/session`;
+
+  // Calculate "hired X months ago" from created_at or hired_date
+  const getHiredTimeAgo = () => {
+    const hiredDate = mentor.mentor_data?.hired_date;
+    const createdAt = mentor.mentor_data?.created_at;
+    const dateToUse = hiredDate || createdAt;
+    if (!dateToUse) return 'Hired recently';
+    
+    const created = new Date(dateToUse);
+    const now = new Date();
+    const diffMonths = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    
+    if (diffMonths < 1) return 'Hired recently';
+    if (diffMonths === 1) return 'Hired 1 month ago';
+    if (diffMonths < 12) return `Hired ${diffMonths} months ago`;
+    const years = Math.floor(diffMonths / 12);
+    return years === 1 ? 'Hired 1 year ago' : `Hired ${years} years ago`;
+  };
+
+  const hiredTimeAgo = getHiredTimeAgo();
+  const avatarUrl = mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0ea5e9&color=fff&size=128`;
 
   return (
-    <div className="group flex flex-col bg-[#ffffff] dark:bg-[#1F2937] rounded-xl border border-[#E2E8F0] dark:border-[#374151] p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-[#0ea5e9]">
-      <div className="flex items-center gap-4 mb-4">
-        {mentor.avatar_url ? (
-          <img
-            src={mentor.avatar_url}
-            alt={mentor.full_name || "Coach"}
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-16 object-cover"
-          />
-        ) : (
-          <div className="bg-gradient-to-br from-[#0ea5e9]/20 to-[#8b5cf6]/20 rounded-full size-16 flex items-center justify-center text-lg font-bold text-[#0ea5e9]">
-            {initials}
+    <Link 
+      href={`/coaches/${mentor.id}`}
+      className="group flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300"
+    >
+      <div className="p-6 flex flex-col h-full">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="relative">
+            {mentor.avatar_url ? (
+              <img 
+                className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-[#16242c] shadow-md" 
+                alt={`Portrait of ${displayName}`} 
+                src={avatarUrl}
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0ea5e9] to-[#8b5cf6] flex items-center justify-center text-white text-lg font-bold border-2 border-white dark:border-[#16242c] shadow-md">
+                {initials}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-[#333333] dark:text-white group-hover:text-[#0ea5e9] transition-colors truncate">{displayName}</h3>
+            <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80 truncate">
+              {displayTitle}{displayCompany && ` @ ${displayCompany}`}
+            </p>
+            <p className="text-xs text-[#333333]/50 dark:text-[#F5F5F5]/50 mt-1">{hiredTimeAgo}</p>
+          </div>
+        </div>
+
+        {focusAreas.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {focusAreas.map((area, idx) => (
+              <span key={idx} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-[#333333]/70 dark:text-[#F5F5F5]/70 rounded-md">
+                {area}
+              </span>
+            ))}
           </div>
         )}
-        <div className="flex-1">
-          <h3 className="font-bold text-lg">{mentor.full_name || "Anonymous Coach"}</h3>
-          {(mentor.mentor_data?.current_title || mentor.mentor_data?.current_company) && (
-            <p className="text-sm text-[#64748B] dark:text-[#9CA3AF] mt-0.5">
-              {mentor.mentor_data?.current_title}
-              {mentor.mentor_data?.current_title && mentor.mentor_data?.current_company && " at "}
-              {mentor.mentor_data?.current_company}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      {shortDescription && (
-        <p className="text-sm text-[#64748B] dark:text-[#9CA3AF] mb-4 line-clamp-2">
-          {shortDescription}
-        </p>
-      )}
-      
-      {focusAreas.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {focusAreas.slice(0, 3).map((area, i) => (
-            <span
-              key={i}
-              className="text-xs font-medium bg-sky-100/80 dark:bg-sky-900/40 text-[#0ea5e9] px-2.5 py-1 rounded-full capitalize"
-            >
-              {area}
+
+        <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+          {isBoth ? (
+            <div className="flex gap-1.5">
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                FREE
+              </span>
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                {paidPrice}
+              </span>
+            </div>
+          ) : (
+            <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+              isFree 
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+            }`}>
+              {displayPrice}
             </span>
-          ))}
-        </div>
-      )}
-      
-      <div className="mt-auto flex justify-between items-center">
-        <p className="text-lg font-bold">
-          {hourlyRate}
-          {mentor.mentor_data?.price_cents && (
-            <span className="text-sm font-normal text-[#64748B] dark:text-[#9CA3AF]">/hr</span>
           )}
-        </p>
-        <Link
-          href={`/coaches/${mentor.id}`}
-          className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal transition-opacity hover:opacity-90"
-        >
-          View Profile
-        </Link>
+          <span className="text-sm font-semibold text-[#0ea5e9] group-hover:underline">
+            {isBoth ? 'View Options →' : isFree ? 'Book Free →' : 'Book Session →'}
+          </span>
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }

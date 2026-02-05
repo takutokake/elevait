@@ -50,6 +50,10 @@ interface BookingModalProps {
   coachId: string
   coachName: string
   hourlyRate?: string
+  pricingModel?: 'free' | 'paid' | 'both'
+  paidPrice?: string
+  freeDuration?: number
+  paidDuration?: number
   availabilitySlots: AvailabilitySlot[]
   onClose: () => void
   onBookingComplete: () => void
@@ -59,14 +63,23 @@ export default function BookingModal({
   coachId,
   coachName,
   hourlyRate,
+  pricingModel = 'free',
+  paidPrice,
+  freeDuration = 30,
+  paidDuration = 60,
   availabilitySlots,
   onClose,
   onBookingComplete,
 }: BookingModalProps) {
-  const [step, setStep] = useState<'date' | 'time' | 'duration' | 'details' | 'confirm'>('date')
+  // For 'both' pricing model, user must choose session type first
+  const isBothPricing = pricingModel === 'both'
+  const [step, setStep] = useState<'type' | 'date' | 'time' | 'duration' | 'details' | 'confirm'>(isBothPricing ? 'type' : 'date')
+  const [selectedSessionType, setSelectedSessionType] = useState<'free' | 'paid' | null>(isBothPricing ? null : (pricingModel === 'paid' ? 'paid' : 'free'))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedStartTime, setSelectedStartTime] = useState<Date | null>(null)
-  const [selectedDuration, setSelectedDuration] = useState<number>(60) // minutes
+  // Duration based on selected session type
+  const defaultDuration = selectedSessionType === 'paid' ? paidDuration : freeDuration
+  const [selectedDuration, setSelectedDuration] = useState<number>(defaultDuration)
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -156,6 +169,9 @@ export default function BookingModal({
     return getAvailableTimeSlots(availabilitySlots, selectedDate, getUserTimezone())
   }, [selectedDate, availabilitySlots])
 
+  // Check if this is a free session based on selected session type
+  const isFreeSession = selectedSessionType === 'free'
+
   // Get available durations for selected start time
   const availableDurations = useMemo(() => {
     if (!selectedStartTime) return []
@@ -174,12 +190,13 @@ export default function BookingModal({
       (slotEnd.getTime() - selectedStartTime.getTime()) / (1000 * 60)
     )
 
-    // Only offer 60, 90, and 120 minute options
-    const standardDurations = [60, 90, 120]
+    // For free sessions: ONLY 30 minute option
+    // For paid sessions: offer 60, 90, and 120 minute options
+    const standardDurations = isFreeSession ? [30] : [60, 90, 120]
     const durations = standardDurations.filter(duration => duration <= maxDurationMinutes)
 
     return durations
-  }, [selectedStartTime, availabilitySlots])
+  }, [selectedStartTime, availabilitySlots, isFreeSession])
 
   // Calculate end time based on duration
   const selectedEndTime = useMemo(() => {
@@ -187,16 +204,47 @@ export default function BookingModal({
     return new Date(selectedStartTime.getTime() + selectedDuration * 60 * 1000)
   }, [selectedStartTime, selectedDuration])
 
-  // Calculate total cost
+  // Calculate total cost based on session type
   const totalCost = useMemo(() => {
-    if (!hourlyRate) return null
-    const rate = parseFloat(hourlyRate.replace(/[^0-9.]/g, ''))
+    if (isFreeSession) return 'FREE'
+    
+    // For paid sessions, use paidPrice if available, otherwise parse hourlyRate
+    let rate = 0
+    if (paidPrice) {
+      rate = parseFloat(paidPrice.replace(/[^0-9.]/g, ''))
+    } else if (hourlyRate && hourlyRate !== 'BOTH') {
+      rate = parseFloat(hourlyRate.replace(/[^0-9.]/g, ''))
+    }
+    
+    if (!rate || isNaN(rate)) return null
+    
     const hours = selectedDuration / 60
     return `$${(rate * hours).toFixed(2)}`
-  }, [hourlyRate, selectedDuration])
+  }, [isFreeSession, paidPrice, hourlyRate, selectedDuration])
 
   const handleDateSelect = (dateStr: string) => {
-    setSelectedDate(new Date(dateStr + 'T00:00:00'))
+    const date = new Date(dateStr + 'T00:00:00')
+    setSelectedDate(date)
+    
+    // Check if this date has any available time slots
+    const slotsForDate = availabilitySlots.filter(slot => {
+      const slotDate = new Date(slot.start_time)
+      return slotDate.toDateString() === date.toDateString()
+    })
+    
+    // Check if any of these slots have available sub-slots
+    const hasAvailableTimes = slotsForDate.some(slot => {
+      if (slot.availableSubSlots && slot.availableSubSlots.length > 0) {
+        return true
+      }
+      return false
+    })
+    
+    if (!hasAvailableTimes) {
+      toast.error('No available times for this date. All slots are booked.')
+      return
+    }
+    
     setStep('time')
   }
 
@@ -230,34 +278,66 @@ export default function BookingModal({
 
     setSubmitting(true)
     try {
-      // Create Stripe checkout session instead of directly creating booking
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mentorId: coachId,
-          slotId: slot.id,
-          bookingStartTime: selectedStartTime.toISOString(),
-          bookingEndTime: selectedEndTime.toISOString(),
-          learnerEmail: formData.email,
-          learnerPhone: formData.phone,
-          sessionNotes: formData.notes,
-        }),
-      })
+      if (isFreeSession) {
+        // For free sessions, create booking directly without Stripe
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mentorId: coachId,
+            slotId: slot.id,
+            bookingStartTime: selectedStartTime.toISOString(),
+            bookingEndTime: selectedEndTime.toISOString(),
+            learnerEmail: formData.email,
+            learnerPhone: formData.phone,
+            sessionNotes: formData.notes,
+            isFreeSession: true,
+          }),
+        })
 
-      if (response.ok) {
-        const { url } = await response.json()
-        // Redirect to Stripe checkout
-        window.location.href = url
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Free booking success:', data)
+          toast.success('🎉 Booking confirmed! Check your email for details.')
+          onBookingComplete()
+          onClose()
+        } else {
+          const errorData = await response.json()
+          console.error('Free booking error:', errorData)
+          toast.error(errorData.error || 'Failed to create booking')
+        }
       } else {
-        const errorData = await response.json()
-        toast.error(errorData.error || 'Failed to initiate payment')
+        // For paid sessions, create Stripe checkout session
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mentorId: coachId,
+            slotId: slot.id,
+            bookingStartTime: selectedStartTime.toISOString(),
+            bookingEndTime: selectedEndTime.toISOString(),
+            learnerEmail: formData.email,
+            learnerPhone: formData.phone,
+            sessionNotes: formData.notes,
+          }),
+        })
+
+        if (response.ok) {
+          const { url } = await response.json()
+          // Redirect to Stripe checkout
+          window.location.href = url
+        } else {
+          const errorData = await response.json()
+          toast.error(errorData.error || 'Failed to initiate payment')
+        }
       }
     } catch (error) {
-      console.error('Checkout error:', error)
-      toast.error('An error occurred while initiating payment')
+      console.error('Booking error:', error)
+      toast.error('An error occurred while processing your booking')
     } finally {
       setSubmitting(false)
     }
@@ -270,11 +350,15 @@ export default function BookingModal({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl">Book a Session with {coachName}</CardTitle>
-              {hourlyRate && (
+              {isBothPricing ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Free & Paid Options Available
+                </p>
+              ) : hourlyRate && hourlyRate !== 'BOTH' ? (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {hourlyRate}/hour
                 </p>
-              )}
+              ) : null}
             </div>
             <Button variant="outline" onClick={onClose}>
               Close
@@ -284,13 +368,13 @@ export default function BookingModal({
         <CardContent className="space-y-6">
           {/* Progress Indicator */}
           <div className="flex items-center justify-between">
-            {['date', 'time', 'duration', 'details', 'confirm'].map((s, idx) => (
+            {(isBothPricing ? ['type', 'date', 'time', 'duration', 'details', 'confirm'] : ['date', 'time', 'duration', 'details', 'confirm']).map((s, idx) => (
               <div key={s} className="flex items-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                     step === s
                       ? 'bg-blue-500 text-white'
-                      : idx < ['date', 'time', 'duration', 'details', 'confirm'].indexOf(step)
+                      : idx < (isBothPricing ? ['type', 'date', 'time', 'duration', 'details', 'confirm'] : ['date', 'time', 'duration', 'details', 'confirm']).indexOf(step)
                       ? 'bg-green-500 text-white'
                       : 'bg-gray-200 text-gray-600'
                   }`}
@@ -302,10 +386,65 @@ export default function BookingModal({
             ))}
           </div>
 
+          {/* Step 0: Select Session Type (only for 'both' pricing) */}
+          {step === 'type' && isBothPricing && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Choose Session Type</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => {
+                    setSelectedSessionType('free')
+                    setSelectedDuration(freeDuration)
+                    setStep('date')
+                  }}
+                  className="p-6 border-2 border-green-200 dark:border-green-800 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all text-left"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-lg font-bold text-green-700 dark:text-green-400">Free Session</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{freeDuration} minute introductory call</p>
+                      <p className="text-xs text-gray-500 mt-2">Great for getting to know each other</p>
+                    </div>
+                    <span className="text-2xl font-bold text-green-600">FREE</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedSessionType('paid')
+                    setSelectedDuration(paidDuration)
+                    setStep('date')
+                  }}
+                  className="p-6 border-2 border-orange-200 dark:border-orange-800 rounded-xl hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-left"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-lg font-bold text-orange-700 dark:text-orange-400">Paid Session</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{paidDuration} minute in-depth coaching</p>
+                      <p className="text-xs text-gray-500 mt-2">Full interview prep & career guidance</p>
+                    </div>
+                    <span className="text-2xl font-bold text-orange-600">{paidPrice}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Select Date */}
           {step === 'date' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Select a Date</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Select a Date</h3>
+                {isBothPricing && (
+                  <Button variant="outline" size="sm" onClick={() => setStep('type')}>
+                    Back
+                  </Button>
+                )}
+              </div>
+              {selectedSessionType && (
+                <p className="text-sm text-gray-500">
+                  {selectedSessionType === 'free' ? '🎁 Free Session' : `💰 Paid Session (${paidPrice})`}
+                </p>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 {availableDates.slice(0, 30).map((dateStr) => (
                   <Button
@@ -318,6 +457,12 @@ export default function BookingModal({
                   </Button>
                 ))}
               </div>
+              {availableDates.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-600 dark:text-gray-400 text-lg mb-2">No availability in the next 30 days</p>
+                  <p className="text-gray-500 dark:text-gray-500 text-sm">This coach's calendar is fully booked. Please check back later.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -525,23 +670,38 @@ export default function BookingModal({
                   <p className="text-sm text-gray-600 dark:text-gray-400">Duration</p>
                   <p className="font-semibold">{selectedDuration} minutes</p>
                 </div>
-                {totalCost && (
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Cost</p>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Cost</p>
+                  {isFreeSession ? (
+                    <p className="text-xl font-bold text-green-600">FREE</p>
+                  ) : (
                     <p className="text-xl font-bold text-blue-600">{totalCost}</p>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
                   <p className="font-semibold">{formData.email}</p>
                 </div>
               </div>
+              {isFreeSession && (
+                <p className="text-sm text-gray-500 text-center">
+                  This is a free session. No payment required.
+                </p>
+              )}
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white h-12 text-lg"
+                className={`w-full h-12 text-lg ${
+                  isFreeSession 
+                    ? 'bg-green-500 hover:bg-green-600 text-white' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
               >
-                {submitting ? 'Creating Booking...' : 'Confirm Booking'}
+                {submitting 
+                  ? 'Creating Booking...' 
+                  : isFreeSession 
+                    ? 'Confirm Free Session' 
+                    : 'Proceed to Payment'}
               </Button>
             </div>
           )}

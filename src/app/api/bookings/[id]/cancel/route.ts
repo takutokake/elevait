@@ -47,7 +47,7 @@ export async function POST(
     }
 
     const reason = sanitizeText(validatedData.reason, 500)
-    const cancelledBy = validatedData.cancelledBy
+    // Don't use cancelledBy from request - we'll determine it based on who's making the request
 
     // Fetch booking to verify ownership and status
     const { data: booking, error: fetchError } = await supabase
@@ -95,13 +95,16 @@ export async function POST(
       )
     }
 
+    // Determine the role of the person cancelling (for emails)
+    const cancellerRole = isMentor ? 'coach' : 'student'
+    
     // Update booking to cancelled
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
         status: 'cancelled',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: user.id,
+        cancelled_by: user.id, // Store the UUID of who cancelled
         cancellation_reason: reason || 'No reason provided',
         updated_at: new Date().toISOString()
       })
@@ -138,7 +141,7 @@ export async function POST(
           hour12: true 
         }),
         cancellationReason: reason || 'No reason provided',
-        cancelledBy: cancelledBy || (isMentor ? 'coach' : 'student')
+        cancelledBy: isMentor ? 'coach' : 'student'
       })
     } catch (emailError) {
       console.error('Failed to send cancellation emails:', emailError)

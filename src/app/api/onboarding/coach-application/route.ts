@@ -48,6 +48,18 @@ export async function POST(request: NextRequest) {
     const companiesGotOffers = sanitizeStringArray(validatedData.companiesGotOffers)
     const companiesInterviewed = sanitizeStringArray(validatedData.companiesInterviewed)
     const avatarUrl = sanitizeUrl(validatedData.avatarUrl)
+    // Pricing fields
+    const pricingModel = validatedData.pricingModel || 'free'
+    const sessionPrice = validatedData.sessionPrice
+    const freeSessionDuration = validatedData.freeSessionDuration || 30
+    const sessionDuration = validatedData.sessionDuration || 45
+    const paymentTitle = sanitizeText(validatedData.paymentTitle, 100)
+    const paymentDescription = sanitizeText(validatedData.paymentDescription, 500)
+    // Filter metadata fields
+    const specializations = sanitizeStringArray(validatedData.specializations)
+    const sessionTypes = sanitizeStringArray(validatedData.sessionTypes)
+    const offersReferrals = validatedData.offersReferrals || false
+    const hiredDate = validatedData.hiredDate
 
     // Convert price from dollars to cents
     const priceCents = Math.round(priceDollars * 100)
@@ -72,7 +84,19 @@ export async function POST(request: NextRequest) {
         job_type_tags: jobTypeTags,
         successful_companies: successfulCompanies,
         companies_got_offers: companiesGotOffers,
-        companies_interviewed: companiesInterviewed
+        companies_interviewed: companiesInterviewed,
+        // Pricing fields
+        pricing_model: pricingModel,
+        session_price: sessionPrice,
+        free_session_duration: freeSessionDuration,
+        session_duration: sessionDuration,
+        payment_title: paymentTitle,
+        payment_description: paymentDescription,
+        // Filter metadata fields
+        specializations: specializations,
+        session_types: sessionTypes,
+        offers_referrals: offersReferrals,
+        hired_date: hiredDate
       })
 
     if (applicationError) {

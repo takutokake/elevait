@@ -13,10 +13,14 @@ export default function CoachesPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
-  const [minPrice, setMinPrice] = useState(50)
-  const [maxPrice, setMaxPrice] = useState(500)
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'this_week' | 'next_week'>('all')
   const [mentorAvailability, setMentorAvailability] = useState<Record<string, boolean>>({})
+  
+  // New filter states
+  const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid' | 'under30'>('all')
+  const [hiredWithinFilter, setHiredWithinFilter] = useState<'all' | '3months' | '6months' | '1year' | '2years'>('all')
+  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([])
+  const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>([])
   
   // Fetch mentors on mount
   useEffect(() => {
@@ -128,13 +132,69 @@ export default function CoachesPage() {
       })
     }
     
-    // Price range filter
-    filtered = filtered.filter(mentor => {
-      const priceCents = mentor.mentor_data?.price_cents
-      if (!priceCents) return false
-      const priceDollars = priceCents / 100
-      return priceDollars >= minPrice && priceDollars <= maxPrice
-    })
+    // Price filter - based on price_cents (matching homepage logic)
+    if (priceFilter === 'free') {
+      // Only show coaches with no price or price = 0
+      filtered = filtered.filter(mentor => {
+        const priceCents = mentor.mentor_data?.price_cents
+        return !priceCents || priceCents === 0
+      })
+    } else if (priceFilter === 'paid') {
+      // Only show coaches with a price > 0
+      filtered = filtered.filter(mentor => {
+        const priceCents = mentor.mentor_data?.price_cents
+        return priceCents && priceCents > 0
+      })
+    } else if (priceFilter === 'under30') {
+      // Show coaches with price under $30 (3000 cents) or free
+      filtered = filtered.filter(mentor => {
+        const priceCents = mentor.mentor_data?.price_cents
+        if (!priceCents || priceCents === 0) return true // Free coaches included
+        return priceCents < 3000
+      })
+    }
+    
+    // Hired within filter
+    if (hiredWithinFilter !== 'all') {
+      const now = new Date()
+      filtered = filtered.filter(mentor => {
+        const createdAt = mentor.mentor_data?.created_at
+        if (!createdAt) return true // Include if no date
+        
+        const created = new Date(createdAt)
+        const diffMonths = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24 * 30))
+        
+        switch (hiredWithinFilter) {
+          case '3months': return diffMonths <= 3
+          case '6months': return diffMonths <= 6
+          case '1year': return diffMonths <= 12
+          case '2years': return diffMonths <= 24
+          default: return true
+        }
+      })
+    }
+    
+    // Specialization filter
+    if (selectedSpecializations.length > 0) {
+      filtered = filtered.filter(mentor => {
+        const jobTypeTags = mentor.mentor_data?.job_type_tags || []
+        const focusAreas = mentor.mentor_data?.focus_areas || []
+        const allTags = [...jobTypeTags, ...focusAreas].map(t => t.toLowerCase())
+        return selectedSpecializations.some(spec => 
+          allTags.some(tag => tag.includes(spec.toLowerCase()))
+        )
+      })
+    }
+    
+    // Session type filter
+    if (selectedSessionTypes.length > 0) {
+      filtered = filtered.filter(mentor => {
+        const focusAreas = mentor.mentor_data?.focus_areas || []
+        return selectedSessionTypes.some(type => 
+          focusAreas.some(area => area.toLowerCase().includes(type.toLowerCase()))
+        )
+      })
+    }
     
     // Availability filter
     if (availabilityFilter !== 'all') {
@@ -142,7 +202,7 @@ export default function CoachesPage() {
     }
     
     setFilteredMentors(filtered)
-  }, [searchQuery, selectedCompanies, minPrice, maxPrice, availabilityFilter, mentors, mentorAvailability])
+  }, [searchQuery, selectedCompanies, priceFilter, hiredWithinFilter, selectedSpecializations, selectedSessionTypes, availabilityFilter, mentors, mentorAvailability])
   
   // Re-check availability when filter changes
   useEffect(() => {
@@ -162,9 +222,23 @@ export default function CoachesPage() {
   const handleReset = () => {
     setSearchQuery('')
     setSelectedCompanies([])
-    setMinPrice(50)
-    setMaxPrice(500)
+    setPriceFilter('all')
+    setHiredWithinFilter('all')
+    setSelectedSpecializations([])
+    setSelectedSessionTypes([])
     setAvailabilityFilter('all')
+  }
+  
+  const handleSpecializationToggle = (spec: string) => {
+    setSelectedSpecializations(prev => 
+      prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]
+    )
+  }
+  
+  const handleSessionTypeToggle = (type: string) => {
+    setSelectedSessionTypes(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    )
   }
   
   const allCompanies = getAllCompanies()
@@ -210,38 +284,142 @@ export default function CoachesPage() {
                       </div>
                     </details>
 
-                    {/* Price Range */}
-                    <div className="border-b border-[#E2E8F0] dark:border-[#374151] py-4">
-                      <p className="text-sm font-medium mb-3">Price Range</p>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-xs text-[#64748B] dark:text-[#9CA3AF]">Min: ${minPrice}</label>
+                    {/* Price Filter */}
+                    <details className="flex flex-col border-b border-[#E2E8F0] dark:border-[#374151] py-2 group" open>
+                      <summary className="flex cursor-pointer items-center justify-between gap-6 py-2">
+                        <p className="text-sm font-medium">Price</p>
+                        <svg className="w-5 h-5 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <div className="space-y-3 pt-2 pb-2">
+                        <label className="flex items-center gap-3 cursor-pointer">
                           <input 
-                            className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer" 
-                            max="500" 
-                            min="50" 
-                            type="range" 
-                            value={minPrice}
-                            onChange={(e) => setMinPrice(Number(e.target.value))}
+                            className="form-radio text-[#0ea5e9] focus:ring-[#0ea5e9]/50 bg-transparent border-[#E2E8F0] dark:border-[#374151]" 
+                            name="priceFilter" 
+                            type="radio"
+                            checked={priceFilter === 'all'}
+                            onChange={() => setPriceFilter('all')}
                           />
-                        </div>
-                        <div>
-                          <label className="text-xs text-[#64748B] dark:text-[#9CA3AF]">Max: ${maxPrice}</label>
+                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Any price</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer">
                           <input 
-                            className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer" 
-                            max="500" 
-                            min="50" 
-                            type="range" 
-                            value={maxPrice}
-                            onChange={(e) => setMaxPrice(Number(e.target.value))}
+                            className="form-radio text-[#0ea5e9] focus:ring-[#0ea5e9]/50 bg-transparent border-[#E2E8F0] dark:border-[#374151]" 
+                            name="priceFilter" 
+                            type="radio"
+                            checked={priceFilter === 'free'}
+                            onChange={() => setPriceFilter('free')}
                           />
-                        </div>
+                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Free sessions only</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            className="form-radio text-[#0ea5e9] focus:ring-[#0ea5e9]/50 bg-transparent border-[#E2E8F0] dark:border-[#374151]" 
+                            name="priceFilter" 
+                            type="radio"
+                            checked={priceFilter === 'paid'}
+                            onChange={() => setPriceFilter('paid')}
+                          />
+                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Paid sessions only</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            className="form-radio text-[#0ea5e9] focus:ring-[#0ea5e9]/50 bg-transparent border-[#E2E8F0] dark:border-[#374151]" 
+                            name="priceFilter" 
+                            type="radio"
+                            checked={priceFilter === 'under30'}
+                            onChange={() => setPriceFilter('under30')}
+                          />
+                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Under $30</span>
+                        </label>
                       </div>
-                      <div className="flex justify-between text-xs text-[#64748B] dark:text-[#9CA3AF] mt-2">
-                        <span>$50</span>
-                        <span>$500</span>
+                    </details>
+
+                    {/* Hired Within Filter */}
+                    <details className="flex flex-col border-b border-[#E2E8F0] dark:border-[#374151] py-2 group">
+                      <summary className="flex cursor-pointer items-center justify-between gap-6 py-2">
+                        <p className="text-sm font-medium">Hired Within</p>
+                        <svg className="w-5 h-5 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <div className="space-y-3 pt-2 pb-2">
+                        {[
+                          { value: '3months', label: 'Last 3 months' },
+                          { value: '6months', label: 'Last 6 months' },
+                          { value: '1year', label: 'Last year' },
+                          { value: '2years', label: 'Last 2 years' },
+                        ].map(option => (
+                          <label key={option.value} className="flex items-center gap-3 cursor-pointer">
+                            <input 
+                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                              type="checkbox"
+                              checked={hiredWithinFilter === option.value}
+                              onChange={() => setHiredWithinFilter(hiredWithinFilter === option.value ? 'all' : option.value as any)}
+                            />
+                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{option.label}</span>
+                          </label>
+                        ))}
                       </div>
-                    </div>
+                    </details>
+
+                    {/* Specialization Filter */}
+                    <details className="flex flex-col border-b border-[#E2E8F0] dark:border-[#374151] py-2 group">
+                      <summary className="flex cursor-pointer items-center justify-between gap-6 py-2">
+                        <p className="text-sm font-medium">Specialization</p>
+                        <svg className="w-5 h-5 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <div className="space-y-3 pt-2 pb-2">
+                        {[
+                          'APM programs',
+                          'Technical PM',
+                          'Consumer products',
+                          'B2B/Enterprise',
+                          'Data/Analytics PM',
+                        ].map(spec => (
+                          <label key={spec} className="flex items-center gap-3 cursor-pointer">
+                            <input 
+                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                              type="checkbox"
+                              checked={selectedSpecializations.includes(spec)}
+                              onChange={() => handleSpecializationToggle(spec)}
+                            />
+                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{spec}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+
+                    {/* Session Type Filter */}
+                    <details className="flex flex-col border-b border-[#E2E8F0] dark:border-[#374151] py-2 group">
+                      <summary className="flex cursor-pointer items-center justify-between gap-6 py-2">
+                        <p className="text-sm font-medium">Session Type</p>
+                        <svg className="w-5 h-5 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <div className="space-y-3 pt-2 pb-2">
+                        {[
+                          'Resume review',
+                          'Mock interview',
+                          'Career advice',
+                          'Referrals available',
+                        ].map(type => (
+                          <label key={type} className="flex items-center gap-3 cursor-pointer">
+                            <input 
+                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                              type="checkbox"
+                              checked={selectedSessionTypes.includes(type)}
+                              onChange={() => handleSessionTypeToggle(type)}
+                            />
+                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{type}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
 
                     {/* Availability Filter */}
                     <details className="flex flex-col py-2 group">

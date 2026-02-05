@@ -36,6 +36,21 @@ export interface MentorData {
   companies_interviewed: string[] | null
   is_active: boolean | null
   created_at: string
+  // Pricing fields
+  pricing_model: 'free' | 'paid' | 'both' | null
+  session_price: number | null
+  session_duration: number | null
+  free_session_duration: number | null
+  payment_title: string | null
+  payment_description: string | null
+  // Filter metadata fields
+  specializations: string[] | null  // APM programs, Technical PM, Consumer products, B2B/Enterprise, Data/Analytics PM
+  session_types: string[] | null    // Resume review, Mock interview, Career advice
+  offers_referrals: boolean | null
+  hired_date: string | null         // When they were hired at current company
+  // Rating fields
+  average_rating: number | null
+  review_count: number | null
 }
 
 export interface MentorWithDetails extends MentorProfile {

@@ -49,7 +49,17 @@ export async function getAllMentors(): Promise<MentorWithDetails[]> {
         companies_got_offers,
         companies_interviewed,
         is_active,
-        created_at
+        created_at,
+        pricing_model,
+        session_price,
+        free_session_duration,
+        session_duration,
+        payment_title,
+        payment_description,
+        specializations,
+        session_types,
+        offers_referrals,
+        hired_date
       `)
       .in('id', mentorIds)
       .eq('is_active', true)
@@ -113,7 +123,17 @@ export async function getMentorById(mentorId: string): Promise<MentorWithDetails
         companies_got_offers,
         companies_interviewed,
         is_active,
-        created_at
+        created_at,
+        pricing_model,
+        session_price,
+        free_session_duration,
+        session_duration,
+        payment_title,
+        payment_description,
+        specializations,
+        session_types,
+        offers_referrals,
+        hired_date
       `)
       .eq('id', mentorId)
       .single()

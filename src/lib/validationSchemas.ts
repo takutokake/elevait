@@ -15,15 +15,23 @@ const urlSchema = z.string().url().max(500)
 const uuidSchema = z.string().uuid()
 const timestampSchema = z.string().datetime()
 
+// Slot ID can be a UUID or a weekly slot ID (weekly-YYYY-MM-DD-HH-MM)
+const slotIdSchema = z.string().min(1).max(100).refine(
+  (val) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) || val.startsWith('weekly-'),
+  { message: 'Invalid slot ID format' }
+)
+
 // Booking validation schemas
 export const createBookingSchema = z.object({
-  slotId: uuidSchema,
+  slotId: slotIdSchema.optional(),
+  mentorId: uuidSchema.optional(), // Required for free sessions from weekly availability
   bookingStartTime: timestampSchema,
   bookingEndTime: timestampSchema,
   learnerEmail: emailSchema.optional(),
   learnerPhone: phoneSchema.nullable().optional(),
   sessionNotes: z.string().max(1000).trim().optional(),
-}).strict()
+  isFreeSession: z.boolean().optional(),
+})
 
 export const updateBookingSchema = z.object({
   bookingId: uuidSchema,
@@ -33,7 +41,7 @@ export const updateBookingSchema = z.object({
 
 export const cancelBookingSchema = z.object({
   reason: z.string().max(500).trim().optional(),
-  cancelledBy: z.enum(['coach', 'student']).optional(),
+  // cancelledBy is determined on the backend, not sent from frontend
 }).strict()
 
 // Availability validation schemas
@@ -77,6 +85,18 @@ export const coachApplicationSchema = z.object({
   companiesGotOffers: z.array(z.string().max(100)).max(20).optional(),
   companiesInterviewed: z.array(z.string().max(100)).max(20).optional(),
   avatarUrl: urlSchema.optional(),
+  // Pricing fields
+  pricingModel: z.enum(['free', 'paid', 'both']).optional(),
+  sessionPrice: z.number().min(0).max(500).nullable().optional(),
+  freeSessionDuration: z.number().int().min(15).max(120).optional(),
+  sessionDuration: z.number().int().min(15).max(180).optional(),
+  paymentTitle: z.string().max(100).trim().optional(),
+  paymentDescription: z.string().max(500).trim().optional(),
+  // Filter metadata fields
+  specializations: z.array(z.string().max(50)).max(10).optional(),
+  sessionTypes: z.array(z.string().max(50)).max(10).optional(),
+  offersReferrals: z.boolean().optional(),
+  hiredDate: z.string().optional(), // ISO date string
 }).strict()
 
 // Mentor onboarding validation
@@ -109,17 +129,28 @@ export const updateMentorProfileSchema = z.object({
   about_me: z.string().min(50).max(2000).trim().optional(),
   focus_areas: z.array(z.string().max(100)).max(10).optional(),
   job_type_tags: z.array(z.string().max(50)).max(10).optional(),
-  key_achievements: z.array(z.string().max(200)).max(10).optional(),
   successful_companies: z.array(z.string().max(100)).max(20).optional(),
   companies_got_offers: z.array(z.string().max(100)).max(20).optional(),
   companies_interviewed: z.array(z.string().max(100)).max(20).optional(),
   price_cents: z.number().int().min(0).max(1000000).optional(),
+  // Pricing fields
+  pricing_model: z.enum(['free', 'paid', 'both']).optional(),
+  session_price: z.number().min(0).max(500).nullable().optional(),
+  free_session_duration: z.number().int().min(15).max(120).optional(),
+  session_duration: z.number().int().min(15).max(180).optional(),
+  payment_title: z.string().max(100).trim().optional(),
+  payment_description: z.string().max(500).trim().optional(),
+  // Filter metadata fields
+  specializations: z.array(z.string().max(50)).max(10).optional(),
+  session_types: z.array(z.string().max(50)).max(10).optional(),
+  offers_referrals: z.boolean().optional(),
+  hired_date: z.string().optional(),
 }).strict()
 
 // Checkout session validation
 export const createCheckoutSessionSchema = z.object({
   mentorId: uuidSchema,
-  slotId: uuidSchema,
+  slotId: slotIdSchema,
   bookingStartTime: timestampSchema,
   bookingEndTime: timestampSchema,
   learnerEmail: emailSchema.optional(),

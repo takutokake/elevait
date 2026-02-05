@@ -21,6 +21,6 @@ export function getMentorInitials(fullName: string | null): string {
  * Format hourly rate for display from price_cents
  */
 export function formatHourlyRate(priceCents: number | null | undefined): string {
-  if (!priceCents) return 'Contact for pricing'
+  if (!priceCents || priceCents === 0) return 'FREE'
   return `$${(priceCents / 100).toFixed(0)}`
 }

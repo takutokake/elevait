@@ -1,11 +1,139 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
-import { computeSubSlots } from '@/lib/dateUtils'
+
+interface WeeklySlot {
+  day_of_week: number
+  hour: number
+  minute: number
+  timezone: string
+}
+
+/**
+ * Generate availability slots from weekly recurring availability
+ * This converts weekly_availability entries into concrete date/time slots
+ */
+function generateSlotsFromWeeklyAvailability(
+  weeklySlots: WeeklySlot[],
+  fromDate: Date,
+  toDate: Date,
+  timezone: string
+): Array<{ id: string; start_time: string; end_time: string; timezone: string }> {
+  const slots: Array<{ id: string; start_time: string; end_time: string; timezone: string }> = []
+  
+  if (weeklySlots.length === 0) return slots
+
+  // Group slots by day and sort by time to find contiguous blocks
+  const slotsByDay: Map<number, Array<{ hour: number; minute: number }>> = new Map()
+  
+  weeklySlots.forEach(slot => {
+    if (!slotsByDay.has(slot.day_of_week)) {
+      slotsByDay.set(slot.day_of_week, [])
+    }
+    slotsByDay.get(slot.day_of_week)!.push({ hour: slot.hour, minute: slot.minute })
+  })
+
+  // Sort each day's slots by time
+  slotsByDay.forEach((daySlots, day) => {
+    daySlots.sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute))
+  })
+
+  // Iterate through each day in the date range
+  const currentDate = new Date(fromDate)
+  currentDate.setHours(0, 0, 0, 0)
+  
+  while (currentDate <= toDate) {
+    const dayOfWeek = currentDate.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const daySlots = slotsByDay.get(dayOfWeek)
+    
+    if (daySlots && daySlots.length > 0) {
+      // Group contiguous 30-minute slots into larger blocks
+      let blockStart: { hour: number; minute: number } | null = null
+      let blockEnd: { hour: number; minute: number } | null = null
+      
+      for (let i = 0; i < daySlots.length; i++) {
+        const slot = daySlots[i]
+        
+        if (blockStart === null) {
+          blockStart = slot
+          blockEnd = { hour: slot.hour, minute: slot.minute + 30 }
+          if (blockEnd.minute >= 60) {
+            blockEnd.hour += 1
+            blockEnd.minute -= 60
+          }
+        } else {
+          // Check if this slot is contiguous with the current block
+          const expectedHour: number = blockEnd!.hour
+          const expectedMinute: number = blockEnd!.minute
+          
+          if (slot.hour === expectedHour && slot.minute === expectedMinute) {
+            // Extend the block
+            blockEnd = { hour: slot.hour, minute: slot.minute + 30 }
+            if (blockEnd.minute >= 60) {
+              blockEnd.hour += 1
+              blockEnd.minute -= 60
+            }
+          } else {
+            // Save current block and start a new one
+            const startTime = new Date(currentDate)
+            startTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+            
+            const endTime = new Date(currentDate)
+            endTime.setHours(blockEnd!.hour, blockEnd!.minute, 0, 0)
+            
+            // Only add if the slot is in the future
+            if (startTime > new Date()) {
+              slots.push({
+                id: `weekly-${currentDate.toISOString().split('T')[0]}-${blockStart.hour}-${blockStart.minute}`,
+                start_time: startTime.toISOString(),
+                end_time: endTime.toISOString(),
+                timezone: timezone
+              })
+            }
+            
+            // Start new block
+            blockStart = slot
+            blockEnd = { hour: slot.hour, minute: slot.minute + 30 }
+            if (blockEnd.minute >= 60) {
+              blockEnd.hour += 1
+              blockEnd.minute -= 60
+            }
+          }
+        }
+      }
+      
+      // Don't forget the last block
+      if (blockStart !== null && blockEnd !== null) {
+        const startTime = new Date(currentDate)
+        startTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+        
+        const endTime = new Date(currentDate)
+        endTime.setHours(blockEnd.hour, blockEnd.minute, 0, 0)
+        
+        // Only add if the slot is in the future
+        if (startTime > new Date()) {
+          slots.push({
+            id: `weekly-${currentDate.toISOString().split('T')[0]}-${blockStart.hour}-${blockStart.minute}`,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            timezone: timezone
+          })
+        }
+      }
+    }
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return slots
+}
 
 /**
  * GET /api/coaches/[id]/availability
  * Public endpoint to fetch a coach's available time slots
  * Query params: from (optional, default: today), to (optional, default: +30 days)
+ * 
+ * This endpoint now uses weekly_availability to generate recurring slots
  */
 export async function GET(
   request: NextRequest,
@@ -38,26 +166,21 @@ export async function GET(
       )
     }
 
-    // Fetch availability ranges (including partially booked ones)
-    const { data: availabilityRanges, error: slotsError } = await supabase
-      .from('availability_slots')
-      .select('*')
+    // Fetch weekly recurring availability
+    const { data: weeklyAvailability, error: weeklyError } = await supabase
+      .from('weekly_availability')
+      .select('day_of_week, hour, minute, timezone')
       .eq('mentor_id', coachId)
-      .in('status', ['open', 'partially_booked']) // Include partially booked
-      .gte('start_time', new Date(from).toISOString())
-      .lte('start_time', new Date(to).toISOString())
-      .gte('end_time', now.toISOString()) // Only ranges that haven't ended yet
-      .order('start_time', { ascending: true })
 
-    if (slotsError) {
-      console.error('Fetch availability error:', slotsError)
+    if (weeklyError) {
+      console.error('Fetch weekly availability error:', weeklyError)
       return NextResponse.json(
         { error: 'Failed to fetch availability' },
         { status: 500 }
       )
     }
 
-    if (!availabilityRanges || availabilityRanges.length === 0) {
+    if (!weeklyAvailability || weeklyAvailability.length === 0) {
       return NextResponse.json({
         coachId,
         slots: [],
@@ -66,51 +189,68 @@ export async function GET(
       })
     }
 
-    // Fetch all active bookings for these availability ranges
-    const availabilityIds = availabilityRanges.map(slot => slot.id)
+    // Get the timezone from the first slot (they should all be the same)
+    const timezone = weeklyAvailability[0]?.timezone || 'UTC'
+
+    // Generate concrete slots from weekly availability
+    const generatedSlots = generateSlotsFromWeeklyAvailability(
+      weeklyAvailability,
+      new Date(from),
+      new Date(to),
+      timezone
+    )
+
+    // Fetch existing bookings to filter out booked times
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('availability_slot_id, booking_start_time, booking_end_time, status')
-      .in('availability_slot_id', availabilityIds)
+      .select('booking_start_time, booking_end_time, status')
+      .eq('mentor_id', coachId)
       .in('status', ['pending', 'confirmed'])
+      .gte('booking_start_time', from)
+      .lte('booking_end_time', to)
 
     if (bookingsError) {
       console.error('Fetch bookings error:', bookingsError)
-      return NextResponse.json(
-        { error: 'Failed to fetch bookings' },
-        { status: 500 }
-      )
+      // Continue without filtering - better to show all slots than none
     }
 
-    // Compute available sub-slots for each availability range
-    const slotsWithSubSlots = availabilityRanges.map(range => {
-      // Get bookings for this specific range
-      const rangeBookings = (bookings || []).filter(
-        b => b.availability_slot_id === range.id
-      )
-
-      // Compute 30-minute sub-slots
-      const subSlots = computeSubSlots(
-        new Date(range.start_time),
-        new Date(range.end_time),
-        rangeBookings.map(b => ({
-          start: new Date(b.booking_start_time),
-          end: new Date(b.booking_end_time)
-        }))
-      )
-
-      // Filter out past sub-slots
-      const futureSubSlots = subSlots.filter(slot => slot.start >= now)
-
+    // Add sub-slots to each generated slot and filter out booked times
+    const slotsWithSubSlots = generatedSlots.map(slot => {
+      const slotStart = new Date(slot.start_time)
+      const slotEnd = new Date(slot.end_time)
+      
+      // Generate 30-minute sub-slots
+      const subSlots: Array<{ start: Date; end: Date; isAvailable: boolean }> = []
+      let currentTime = new Date(slotStart)
+      
+      while (currentTime < slotEnd) {
+        const subSlotEnd = new Date(currentTime.getTime() + 30 * 60 * 1000)
+        
+        // Check if this sub-slot overlaps with any booking
+        const isBooked = (bookings || []).some(booking => {
+          const bookingStart = new Date(booking.booking_start_time)
+          const bookingEnd = new Date(booking.booking_end_time)
+          return currentTime < bookingEnd && subSlotEnd > bookingStart
+        })
+        
+        subSlots.push({
+          start: new Date(currentTime),
+          end: subSlotEnd,
+          isAvailable: !isBooked && currentTime > now
+        })
+        
+        currentTime = subSlotEnd
+      }
+      
       return {
-        ...range,
-        subSlots: futureSubSlots,
-        availableSubSlots: futureSubSlots.filter(s => s.isAvailable),
-        bookedSubSlots: futureSubSlots.filter(s => !s.isAvailable)
+        ...slot,
+        subSlots,
+        availableSubSlots: subSlots.filter(s => s.isAvailable),
+        bookedSubSlots: subSlots.filter(s => !s.isAvailable)
       }
     })
 
-    // Filter out ranges with no available sub-slots
+    // Filter out slots with no available sub-slots
     const slotsWithAvailability = slotsWithSubSlots.filter(
       slot => slot.availableSubSlots.length > 0
     )

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { uploadAvatar } from '@/lib/avatarUpload'
+import { PricingSettings, PricingData } from '@/components/settings/PricingSettings'
 
 interface MentorData {
   user: any
@@ -32,7 +33,19 @@ export default function MentorSettings() {
     successfulCompanies: [] as string[],
     companiesGotOffers: [] as string[],
     companiesInterviewed: [] as string[],
-    priceDollars: 0
+    priceDollars: 0,
+    // Pricing fields
+    pricingModel: 'free' as 'free' | 'paid' | 'both',
+    sessionPrice: null as number | null,
+    freeSessionDuration: 30,
+    sessionDuration: 45,
+    paymentTitle: '',
+    paymentDescription: '',
+    // Filter metadata fields
+    specializations: [] as string[],
+    sessionTypes: [] as string[],
+    offersReferrals: false,
+    hiredDate: ''
   })
   const [newSuccessCompany, setNewSuccessCompany] = useState('')
   const [newOfferCompany, setNewOfferCompany] = useState('')
@@ -56,6 +69,20 @@ export default function MentorSettings() {
     'New Grad',
     'Mid-level',
     'Senior'
+  ]
+
+  const specializationOptions = [
+    'APM programs',
+    'Technical PM',
+    'Consumer products',
+    'B2B/Enterprise',
+    'Data/Analytics PM'
+  ]
+
+  const sessionTypeOptions = [
+    'Resume review',
+    'Mock interview',
+    'Career advice'
   ]
 
   const companyOptions = [
@@ -164,7 +191,19 @@ export default function MentorSettings() {
           successfulCompanies: mentor.successful_companies || [],
           companiesGotOffers: mentor.companies_got_offers || [],
           companiesInterviewed: mentor.companies_interviewed || [],
-          priceDollars: mentor.price_cents ? mentor.price_cents / 100 : 0
+          priceDollars: mentor.price_cents ? mentor.price_cents / 100 : 0,
+          // Pricing fields
+          pricingModel: mentor.pricing_model || 'free',
+          sessionPrice: mentor.session_price || null,
+          freeSessionDuration: mentor.free_session_duration || 30,
+          sessionDuration: mentor.session_duration || 45,
+          paymentTitle: mentor.payment_title || '',
+          paymentDescription: mentor.payment_description || '',
+          // Filter metadata fields
+          specializations: mentor.specializations || [],
+          sessionTypes: mentor.session_types || [],
+          offersReferrals: mentor.offers_referrals || false,
+          hiredDate: mentor.hired_date || ''
         })
       }
     } catch (error) {
@@ -247,6 +286,18 @@ export default function MentorSettings() {
       if (formData.priceDollars !== undefined && formData.priceDollars !== null) {
         mentorPayload.price_cents = formData.priceDollars * 100
       }
+      // Pricing fields
+      mentorPayload.pricing_model = formData.pricingModel
+      mentorPayload.session_price = formData.sessionPrice
+      mentorPayload.free_session_duration = formData.freeSessionDuration
+      mentorPayload.session_duration = formData.sessionDuration
+      mentorPayload.payment_title = formData.paymentTitle
+      mentorPayload.payment_description = formData.paymentDescription
+      // Filter metadata fields
+      mentorPayload.specializations = formData.specializations
+      mentorPayload.session_types = formData.sessionTypes
+      mentorPayload.offers_referrals = formData.offersReferrals
+      mentorPayload.hired_date = formData.hiredDate || undefined
 
       const mentorResponse = await fetch('/api/mentor/profile', {
         method: 'PATCH',
@@ -298,24 +349,6 @@ export default function MentorSettings() {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: parseInt(e.target.value) || 0
-    }))
-  }
-
-  const handleFocusAreaChange = (area: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      focusAreas: checked 
-        ? [...prev.focusAreas, area]
-        : prev.focusAreas.filter(a => a !== area)
-    }))
-  }
-
-  const handleJobTypeChange = (jobType: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      jobTypeTags: checked 
-        ? [...prev.jobTypeTags, jobType]
-        : prev.jobTypeTags.filter(j => j !== jobType)
     }))
   }
 
@@ -374,6 +407,19 @@ export default function MentorSettings() {
     if (e.target.files && e.target.files[0]) {
       setAvatarFile(e.target.files[0])
     }
+  }
+
+  const handlePricingChange = (pricingData: PricingData) => {
+    setFormData(prev => ({
+      ...prev,
+      pricingModel: pricingData.pricing_model,
+      sessionPrice: pricingData.session_price,
+      freeSessionDuration: pricingData.free_session_duration,
+      sessionDuration: pricingData.session_duration,
+      paymentTitle: pricingData.payment_title,
+      paymentDescription: pricingData.payment_description,
+      priceDollars: pricingData.session_price || 0
+    }))
   }
 
   if (loading) {
@@ -517,22 +563,6 @@ export default function MentorSettings() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="priceDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
-                  Price per Session <span className="text-[#f97316]">($)</span>
-                </label>
-                <input
-                  id="priceDollars"
-                  name="priceDollars"
-                  type="number"
-                  min="0"
-                  step="1"
-                  required
-                  value={formData.priceDollars}
-                  onChange={handleNumberChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -602,53 +632,9 @@ export default function MentorSettings() {
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Focus Areas
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {focusAreaOptions.map((area) => (
-                  <div key={area} className="flex items-center space-x-3">
-                    <input
-                      id={area}
-                      type="checkbox"
-                      checked={formData.focusAreas.includes(area)}
-                      onChange={(e) => handleFocusAreaChange(area, e.target.checked)}
-                      className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
-                    />
-                    <label htmlFor={area} className="text-sm text-[#333333] dark:text-white">
-                      {area}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Job Types You Help With
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {jobTypeOptions.map((jobType) => (
-                  <div key={jobType} className="flex items-center space-x-3">
-                    <input
-                      id={`jobtype-${jobType}`}
-                      type="checkbox"
-                      checked={formData.jobTypeTags.includes(jobType)}
-                      onChange={(e) => handleJobTypeChange(jobType, e.target.checked)}
-                      className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
-                    />
-                    <label htmlFor={`jobtype-${jobType}`} className="text-sm text-[#333333] dark:text-white">
-                      {jobType}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Companies You've Helped Students Get Into
+                Companies You've Helped Students Get Into <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Optional)</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -686,9 +672,9 @@ export default function MentorSettings() {
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Companies I Got Offers From
+                Companies I Got Offers From <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Optional)</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -726,9 +712,9 @@ export default function MentorSettings() {
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="block text-sm font-medium text-[#333333] dark:text-white">
-                Companies I've Interviewed At
+                Companies I've Interviewed At <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Optional)</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -764,6 +750,113 @@ export default function MentorSettings() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Pricing Settings Section */}
+            <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+              <PricingSettings
+                currentPricingModel={formData.pricingModel}
+                currentSessionPrice={formData.sessionPrice}
+                currentFreeDuration={formData.freeSessionDuration}
+                currentPaidDuration={formData.sessionDuration}
+                paymentTitle={formData.paymentTitle}
+                paymentDescription={formData.paymentDescription}
+                onChange={handlePricingChange}
+                showPreview={true}
+              />
+            </div>
+
+            {/* Coaching Details Section */}
+            <div className="pt-6 border-t border-gray-200 dark:border-gray-700 space-y-6">
+              <h3 className="text-lg font-semibold text-[#333333] dark:text-white">Coaching Details</h3>
+              
+              {/* When were you hired? */}
+              <div className="space-y-2">
+                <label htmlFor="hiredDate" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  When were you hired at your current company?
+                </label>
+                <input
+                  id="hiredDate"
+                  name="hiredDate"
+                  type="month"
+                  value={formData.hiredDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hiredDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  This helps students find coaches with recent interview experience
+                </p>
+              </div>
+
+              {/* Specializations */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Your Specializations <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Select all that apply)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {specializationOptions.map(spec => (
+                    <label key={spec} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <input
+                        type="checkbox"
+                        checked={formData.specializations.includes(spec)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({ ...prev, specializations: [...prev.specializations, spec] }))
+                          } else {
+                            setFormData(prev => ({ ...prev, specializations: prev.specializations.filter(s => s !== spec) }))
+                          }
+                        }}
+                        className="form-checkbox rounded border-gray-300 dark:border-gray-600 text-[#0ea5e9] focus:ring-[#0ea5e9]/50"
+                      />
+                      <span className="text-sm text-[#333333] dark:text-white">{spec}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Session Types */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  What can you help with? <span className="text-[#333333]/60 dark:text-[#F5F5F5]/60">(Select all that apply)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {sessionTypeOptions.map(type => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <input
+                        type="checkbox"
+                        checked={formData.sessionTypes.includes(type)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({ ...prev, sessionTypes: [...prev.sessionTypes, type] }))
+                          } else {
+                            setFormData(prev => ({ ...prev, sessionTypes: prev.sessionTypes.filter(t => t !== type) }))
+                          }
+                        }}
+                        className="form-checkbox rounded border-gray-300 dark:border-gray-600 text-[#0ea5e9] focus:ring-[#0ea5e9]/50"
+                      />
+                      <span className="text-sm text-[#333333] dark:text-white">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Offers Referrals */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-[#0ea5e9] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.offersReferrals}
+                    onChange={(e) => setFormData(prev => ({ ...prev, offersReferrals: e.target.checked }))}
+                    className="form-checkbox rounded border-gray-300 dark:border-gray-600 text-[#0ea5e9] focus:ring-[#0ea5e9]/50 w-5 h-5"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-[#333333] dark:text-white">I can offer referrals</span>
+                    <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                      Check this if you're willing to refer qualified candidates to your company
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
 
             <Button
