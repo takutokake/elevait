@@ -11,6 +11,7 @@ import {
   getAvailableTimeSlots,
   getDurationInMinutes,
   getUserTimezone,
+  getTimezoneFriendlyName,
 } from '@/lib/dateUtils'
 
 /**
@@ -477,6 +478,11 @@ export default function BookingModal({
                   Back
                 </Button>
               </div>
+              {/* Timezone indicator for students */}
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
+                <span>🌐</span>
+                <span>Times shown in <strong>{getTimezoneFriendlyName(getUserTimezone())}</strong></span>
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 {availableTimeSlots.map((slot, idx) => {
                   // Find the parent availability slot
@@ -518,8 +524,10 @@ export default function BookingModal({
                     )
                   }
                   
-                  // Only show slots with at least 60 minutes available
-                  if (availableMinutes < 60) return null
+                  // For free sessions: show slots with at least 30 minutes available
+                  // For paid sessions: show slots with at least 60 minutes available
+                  const minRequiredMinutes = isFreeSession ? 30 : 60
+                  if (availableMinutes < minRequiredMinutes) return null
                   
                   return (
                     <Button
@@ -665,6 +673,9 @@ export default function BookingModal({
                       selectedEndTime &&
                       formatTimeRange(selectedStartTime, selectedEndTime)}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    🌐 {getTimezoneFriendlyName(getUserTimezone())}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Duration</p>
@@ -674,8 +685,10 @@ export default function BookingModal({
                   <p className="text-sm text-gray-600 dark:text-gray-400">Cost</p>
                   {isFreeSession ? (
                     <p className="text-xl font-bold text-green-600">FREE</p>
-                  ) : (
+                  ) : totalCost ? (
                     <p className="text-xl font-bold text-blue-600">{totalCost}</p>
+                  ) : (
+                    <p className="text-xl font-bold text-blue-600">Contact for pricing</p>
                   )}
                 </div>
                 <div>

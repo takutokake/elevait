@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
+import { getUserTimezone, getTimezoneFriendlyName, COMMON_TIMEZONES } from '@/lib/dateUtils'
 
 interface TimeSlot {
   day: number
@@ -10,16 +11,18 @@ interface TimeSlot {
 
 interface WeeklyAvailabilityGridProps {
   initialAvailability?: TimeSlot[]
-  onSave?: (availability: TimeSlot[]) => Promise<void>
-  timezone?: string
+  onSave?: (availability: TimeSlot[], timezone: string) => Promise<void>
+  initialTimezone?: string
 }
 
 export function WeeklyAvailabilityGrid({
   initialAvailability = [],
   onSave,
-  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  initialTimezone
 }: WeeklyAvailabilityGridProps) {
   const [availability, setAvailability] = useState<TimeSlot[]>(initialAvailability)
+  const [timezone, setTimezone] = useState(initialTimezone || getUserTimezone())
+  const [showTimezoneDropdown, setShowTimezoneDropdown] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragMode, setDragMode] = useState<'select' | 'deselect'>('select')
@@ -128,7 +131,7 @@ export function WeeklyAvailabilityGrid({
     if (!onSave) return
     setIsSaving(true)
     try {
-      await onSave(availability)
+      await onSave(availability, timezone)
     } catch (error) {
       console.error('Failed to save availability:', error)
     } finally {
@@ -142,6 +145,43 @@ export function WeeklyAvailabilityGrid({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
+      {/* Timezone Selector - Top Right */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-[#333333] dark:text-white">Set Your Weekly Availability</p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowTimezoneDropdown(!showTimezoneDropdown)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-medium text-[#333333] dark:text-white transition-colors"
+          >
+            <span>🌐</span>
+            <span>{getTimezoneFriendlyName(timezone)}</span>
+            <svg className={`w-4 h-4 transition-transform ${showTimezoneDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showTimezoneDropdown && (
+            <div className="absolute right-0 top-full mt-1 w-64 max-h-64 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              {COMMON_TIMEZONES.map((tz) => (
+                <button
+                  key={tz.value}
+                  type="button"
+                  onClick={() => {
+                    setTimezone(tz.value)
+                    setShowTimezoneDropdown(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                    timezone === tz.value ? 'bg-[#0ea5e9]/10 text-[#0ea5e9] font-medium' : 'text-[#333333] dark:text-white'
+                  }`}
+                >
+                  {tz.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quick Select Buttons */}
       <div className="space-y-2">
         <p className="text-sm font-medium text-[#333333] dark:text-white">Quick Pick:</p>

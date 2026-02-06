@@ -22,22 +22,22 @@ export default async function Home() {
   // Sample testimonials
   const testimonials = [
     {
-      quote: "I practiced with Sarah who had just done Google APM interviews 2 months before me. She literally sent me her interview prep doc and walked me through every round. Hired 6 weeks later.",
-      name: "Alex Chen",
-      role: "APM @ Google",
-      hiredDate: "December 2024"
+      quote: "The coaching sessions were incredibly helpful in preparing me for the Capital One interview process. My coach provided detailed insights and practice that made all the difference.",
+      name: "Anonymous",
+      role: "Product Manager @ Capital One",
+      hiredDate: "October 2025"
     },
     {
-      quote: "My coach had just gone through the exact same Meta PM loop I was preparing for. The insights were incredibly fresh and specific. Couldn't have done it without peer coaching.",
-      name: "Jordan Lee",
-      role: "Product Manager @ Meta",
-      hiredDate: "January 2025"
+      quote: "I knew nothing about PM interviews and had never interviewed before. After working with my coach, I gained the confidence and skills needed to succeed. The transformation was incredible.",
+      name: "Anonymous",
+      role: "Product Management Intern @ Roblox",
+      hiredDate: "November 2025"
     },
     {
-      quote: "Free coaching from someone who just landed at Stripe? It felt too good to be true, but it worked. They remembered every detail of their interviews.",
-      name: "Sam Rivera",
-      role: "PM @ Stripe",
-      hiredDate: "November 2024"
+      quote: "The personalized coaching and real-world interview experience shared by my coach helped me navigate the Amazon interview process successfully.",
+      name: "Anonymous",
+      role: "Product Management Intern @ Amazon",
+      hiredDate: "December 2025"
     }
   ];
 

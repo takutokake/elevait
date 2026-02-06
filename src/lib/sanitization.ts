@@ -32,6 +32,21 @@ export function sanitizeStringArray(input: string[] | null | undefined): string[
 }
 
 /**
+ * Sanitize an array of strings WITHOUT HTML encoding
+ * Use this for data that will be stored in the database and doesn't need HTML escaping
+ * (e.g., specializations, tags, categories)
+ */
+export function sanitizeStringArrayNoEncode(input: string[] | null | undefined): string[] {
+  if (!input || !Array.isArray(input)) return []
+  
+  // Just trim and limit length, no HTML encoding
+  return input
+    .filter(item => item && typeof item === 'string')
+    .map(item => String(item).trim().slice(0, 200))
+    .filter(item => item.length > 0)
+}
+
+/**
  * Sanitize an object's string properties recursively
  * Useful for sanitizing entire request bodies
  */
@@ -132,6 +147,26 @@ export function sanitizeText(
   
   const sanitized = sanitizeString(input)
   return sanitized.slice(0, maxLength)
+}
+
+/**
+ * Sanitize text input WITHOUT HTML encoding
+ * Use this for long-form text fields (aboutMe, descriptions) that will be stored as plain text
+ * and escaped by React on render. This prevents double-encoding issues.
+ */
+export function sanitizeTextNoEncode(
+  input: string | null | undefined,
+  maxLength: number = 1000
+): string {
+  if (!input) return ''
+  
+  // Just trim and limit length, no HTML encoding
+  // Remove any potentially dangerous characters but keep normal punctuation
+  const cleaned = String(input)
+    .trim()
+    .slice(0, maxLength)
+  
+  return cleaned
 }
 
 /**

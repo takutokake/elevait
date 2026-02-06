@@ -45,7 +45,9 @@ export default function MentorSettings() {
     specializations: [] as string[],
     sessionTypes: [] as string[],
     offersReferrals: false,
-    hiredDate: ''
+    hiredDate: '',
+    // Interview experience
+    totalInterviews: 0
   })
   const [newSuccessCompany, setNewSuccessCompany] = useState('')
   const [newOfferCompany, setNewOfferCompany] = useState('')
@@ -203,7 +205,9 @@ export default function MentorSettings() {
           specializations: mentor.specializations || [],
           sessionTypes: mentor.session_types || [],
           offersReferrals: mentor.offers_referrals || false,
-          hiredDate: mentor.hired_date || ''
+          hiredDate: mentor.hired_date || '',
+          // Interview experience
+          totalInterviews: mentor.total_interviews || 0
         })
       }
     } catch (error) {
@@ -298,6 +302,8 @@ export default function MentorSettings() {
       mentorPayload.session_types = formData.sessionTypes
       mentorPayload.offers_referrals = formData.offersReferrals
       mentorPayload.hired_date = formData.hiredDate || undefined
+      // Interview experience
+      mentorPayload.total_interviews = formData.totalInterviews || 0
 
       const mentorResponse = await fetch('/api/mentor/profile', {
         method: 'PATCH',
@@ -313,19 +319,37 @@ export default function MentorSettings() {
         // Refresh data
         await fetchMentorData()
       } else {
-        // Get detailed error message
+        // Get detailed error message with field-specific details
         let errorMsg = 'Failed to update some settings. '
         
         if (!profileResponse.ok) {
           const profileError = await profileResponse.json()
-          errorMsg += `Profile error: ${profileError.error || profileError.details || 'Unknown'}. `
           console.error('Profile update error:', profileError)
+          
+          if (profileError.details && Array.isArray(profileError.details)) {
+            // Show specific field errors
+            const fieldErrors = profileError.details.map((d: any) => 
+              `${d.field}: ${d.message}`
+            ).join('; ')
+            errorMsg += `Profile: ${fieldErrors}. `
+          } else {
+            errorMsg += `Profile error: ${profileError.error || 'Unknown'}. `
+          }
         }
         
         if (!mentorResponse.ok) {
           const mentorError = await mentorResponse.json()
-          errorMsg += `Mentor error: ${mentorError.error || mentorError.details || 'Unknown'}.`
           console.error('Mentor update error:', mentorError)
+          
+          if (mentorError.details && Array.isArray(mentorError.details)) {
+            // Show specific field errors
+            const fieldErrors = mentorError.details.map((d: any) => 
+              `${d.field}: ${d.message}`
+            ).join('; ')
+            errorMsg += `Mentor: ${fieldErrors}.`
+          } else {
+            errorMsg += `Mentor error: ${mentorError.error || 'Unknown'}.`
+          }
         }
         
         setMessage(errorMsg)
@@ -563,6 +587,23 @@ export default function MentorSettings() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label htmlFor="totalInterviews" className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Number of Interviews
+                </label>
+                <input
+                  id="totalInterviews"
+                  name="totalInterviews"
+                  type="number"
+                  min="0"
+                  value={formData.totalInterviews}
+                  onChange={handleNumberChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                />
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  Approximate number of interviews you've conducted
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

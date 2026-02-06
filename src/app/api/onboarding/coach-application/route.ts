@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser, getSupabaseServerClient } from '@/lib/supabaseServer'
 import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
 import { coachApplicationSchema } from '@/lib/validationSchemas'
-import { sanitizeText, sanitizeUrl, sanitizeStringArray } from '@/lib/sanitization'
+import { sanitizeText, sanitizeTextNoEncode, sanitizeUrl, sanitizeStringArray, sanitizeStringArrayNoEncode } from '@/lib/sanitization'
 import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
 import { ZodError } from 'zod'
 
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
     const focusAreas = sanitizeStringArray(validatedData.focusAreas)
     const priceDollars = validatedData.priceDollars
     const alumniSchool = sanitizeText(validatedData.alumniSchool, 200)
-    const shortDescription = sanitizeText(validatedData.shortDescription, 500)
-    const aboutMe = sanitizeText(validatedData.aboutMe, 2000)
+    const shortDescription = sanitizeTextNoEncode(validatedData.shortDescription, 500)
+    const aboutMe = sanitizeTextNoEncode(validatedData.aboutMe, 2000)
     const jobTypeTags = sanitizeStringArray(validatedData.jobTypeTags)
     const successfulCompanies = sanitizeStringArray(validatedData.successfulCompanies)
     const companiesGotOffers = sanitizeStringArray(validatedData.companiesGotOffers)
@@ -54,12 +54,14 @@ export async function POST(request: NextRequest) {
     const freeSessionDuration = validatedData.freeSessionDuration || 30
     const sessionDuration = validatedData.sessionDuration || 45
     const paymentTitle = sanitizeText(validatedData.paymentTitle, 100)
-    const paymentDescription = sanitizeText(validatedData.paymentDescription, 500)
+    const paymentDescription = sanitizeTextNoEncode(validatedData.paymentDescription, 500)
     // Filter metadata fields
-    const specializations = sanitizeStringArray(validatedData.specializations)
-    const sessionTypes = sanitizeStringArray(validatedData.sessionTypes)
+    const specializations = sanitizeStringArrayNoEncode(validatedData.specializations)
+    const sessionTypes = sanitizeStringArrayNoEncode(validatedData.sessionTypes)
     const offersReferrals = validatedData.offersReferrals || false
     const hiredDate = validatedData.hiredDate
+    // Interview experience
+    const totalInterviews = validatedData.totalInterviews || 0
 
     // Convert price from dollars to cents
     const priceCents = Math.round(priceDollars * 100)
@@ -96,7 +98,9 @@ export async function POST(request: NextRequest) {
         specializations: specializations,
         session_types: sessionTypes,
         offers_referrals: offersReferrals,
-        hired_date: hiredDate
+        hired_date: hiredDate,
+        // Interview experience
+        total_interviews: totalInterviews
       })
 
     if (applicationError) {

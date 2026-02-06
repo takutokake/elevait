@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
 import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
 import { updateMentorProfileSchema } from '@/lib/validationSchemas'
-import { sanitizeText, sanitizeUrl, sanitizeStringArray } from '@/lib/sanitization'
+import { sanitizeText, sanitizeTextNoEncode, sanitizeUrl, sanitizeStringArray, sanitizeStringArrayNoEncode } from '@/lib/sanitization'
 import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
 import { ZodError } from 'zod'
 
@@ -45,8 +45,9 @@ export async function PATCH(request: NextRequest) {
     const years_experience = validatedData.years_experience
     const linkedin_url = sanitizeUrl(validatedData.linkedin_url)
     const alumni_school = sanitizeText(validatedData.alumni_school, 200)
-    const short_description = sanitizeText(validatedData.short_description, 500)
-    const about_me = sanitizeText(validatedData.about_me, 2000)
+    // Use no-encode for long-form text to prevent apostrophes becoming &#x27;
+    const short_description = sanitizeTextNoEncode(validatedData.short_description, 500)
+    const about_me = sanitizeTextNoEncode(validatedData.about_me, 2000)
     const focus_areas = sanitizeStringArray(validatedData.focus_areas)
     const job_type_tags = sanitizeStringArray(validatedData.job_type_tags)
     const successful_companies = sanitizeStringArray(validatedData.successful_companies)
@@ -59,11 +60,13 @@ export async function PATCH(request: NextRequest) {
     const free_session_duration = validatedData.free_session_duration
     const session_duration = validatedData.session_duration
     const payment_title = sanitizeText(validatedData.payment_title, 100)
-    const payment_description = sanitizeText(validatedData.payment_description, 500)
+    const payment_description = sanitizeTextNoEncode(validatedData.payment_description, 500)
     // Filter metadata fields
-    const specializations = sanitizeStringArray(validatedData.specializations)
-    const session_types = sanitizeStringArray(validatedData.session_types)
+    const specializations = sanitizeStringArrayNoEncode(validatedData.specializations)
+    const session_types = sanitizeStringArrayNoEncode(validatedData.session_types)
     const offers_referrals = validatedData.offers_referrals
+    // Interview experience
+    const total_interviews = validatedData.total_interviews
     // Convert YYYY-MM format to YYYY-MM-01 for PostgreSQL date type
     let hired_date = validatedData.hired_date
     if (hired_date && hired_date.length === 7) {
@@ -107,6 +110,7 @@ export async function PATCH(request: NextRequest) {
       if (session_types !== undefined) updateData.session_types = session_types
       if (offers_referrals !== undefined) updateData.offers_referrals = offers_referrals
       if (hired_date !== undefined) updateData.hired_date = hired_date
+      if (total_interviews !== undefined) updateData.total_interviews = total_interviews
 
       const result = await supabase
         .from('mentors')
@@ -148,7 +152,8 @@ export async function PATCH(request: NextRequest) {
           specializations,
           session_types,
           offers_referrals,
-          hired_date
+          hired_date,
+          total_interviews
         })
         .select()
         .single()

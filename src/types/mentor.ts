@@ -48,6 +48,8 @@ export interface MentorData {
   session_types: string[] | null    // Resume review, Mock interview, Career advice
   offers_referrals: boolean | null
   hired_date: string | null         // When they were hired at current company
+  // Interview experience
+  total_interviews: number | null   // Total number of interviews conducted
   // Rating fields
   average_rating: number | null
   review_count: number | null

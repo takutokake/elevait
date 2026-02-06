@@ -9,6 +9,81 @@ export function getUserTimezone(): string {
 }
 
 /**
+ * Get a short timezone abbreviation (e.g., "PT", "ET", "UTC")
+ */
+export function getTimezoneAbbreviation(timezone?: string): string {
+  const tz = timezone || getUserTimezone();
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'short'
+    });
+    const parts = formatter.formatToParts(new Date());
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    return tzPart?.value || tz;
+  } catch {
+    return tz;
+  }
+}
+
+/**
+ * Get a friendly timezone name (e.g., "Pacific Time (PT)")
+ */
+export function getTimezoneFriendlyName(timezone?: string): string {
+  const tz = timezone || getUserTimezone();
+  const abbr = getTimezoneAbbreviation(tz);
+  
+  // Map common timezones to friendly names
+  const friendlyNames: Record<string, string> = {
+    'America/Los_Angeles': 'Pacific Time',
+    'America/Denver': 'Mountain Time',
+    'America/Chicago': 'Central Time',
+    'America/New_York': 'Eastern Time',
+    'America/Phoenix': 'Arizona Time',
+    'America/Anchorage': 'Alaska Time',
+    'Pacific/Honolulu': 'Hawaii Time',
+    'Europe/London': 'British Time',
+    'Europe/Paris': 'Central European Time',
+    'Asia/Tokyo': 'Japan Time',
+    'Asia/Shanghai': 'China Time',
+    'Australia/Sydney': 'Australian Eastern Time',
+  };
+  
+  const friendly = friendlyNames[tz];
+  if (friendly) {
+    return `${friendly} (${abbr})`;
+  }
+  
+  // Fallback: use the timezone identifier with abbreviation
+  const simpleName = tz.split('/').pop()?.replace(/_/g, ' ') || tz;
+  return `${simpleName} (${abbr})`;
+}
+
+/**
+ * Common timezones for dropdown selection
+ */
+export const COMMON_TIMEZONES = [
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Phoenix', label: 'Arizona (MST)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
+  { value: 'UTC', label: 'UTC' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
+  { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+  { value: 'Asia/Kolkata', label: 'India (IST)' },
+  { value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)' },
+  { value: 'Australia/Melbourne', label: 'Melbourne (AEST/AEDT)' },
+];
+
+/**
  * Convert UTC date to user's timezone
  */
 export function toUserTimezone(utcDate: Date | string, timezone?: string): Date {

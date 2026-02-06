@@ -13,14 +13,17 @@ export default function CoachesPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const [companySearchQuery, setCompanySearchQuery] = useState('')
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'this_week' | 'next_week'>('all')
   const [mentorAvailability, setMentorAvailability] = useState<Record<string, boolean>>({})
   
   // New filter states
-  const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid' | 'under30'>('all')
+  const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid' | 'under50'>('all')
   const [hiredWithinFilter, setHiredWithinFilter] = useState<'all' | '3months' | '6months' | '1year' | '2years'>('all')
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([])
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<'relevance' | 'rating' | 'sessions' | 'price_low' | 'price_high' | 'newest'>('relevance')
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
   
   // Fetch mentors on mount
   useEffect(() => {
@@ -132,37 +135,39 @@ export default function CoachesPage() {
       })
     }
     
-    // Price filter - based on price_cents (matching homepage logic)
+    // Price filter - based on pricing_model (source of truth)
     if (priceFilter === 'free') {
-      // Only show coaches with no price or price = 0
+      // Show coaches who offer free sessions (pricing_model is 'free' or 'both')
       filtered = filtered.filter(mentor => {
-        const priceCents = mentor.mentor_data?.price_cents
-        return !priceCents || priceCents === 0
+        const pricingModel = mentor.mentor_data?.pricing_model
+        return pricingModel === 'free' || pricingModel === 'both'
       })
     } else if (priceFilter === 'paid') {
-      // Only show coaches with a price > 0
+      // Show coaches who offer paid sessions (pricing_model is 'paid' or 'both')
       filtered = filtered.filter(mentor => {
-        const priceCents = mentor.mentor_data?.price_cents
-        return priceCents && priceCents > 0
+        const pricingModel = mentor.mentor_data?.pricing_model
+        return pricingModel === 'paid' || pricingModel === 'both'
       })
-    } else if (priceFilter === 'under30') {
-      // Show coaches with price under $30 (3000 cents) or free
+    } else if (priceFilter === 'under50') {
+      // Show coaches with price under $50 or free
       filtered = filtered.filter(mentor => {
+        const pricingModel = mentor.mentor_data?.pricing_model
         const priceCents = mentor.mentor_data?.price_cents
-        if (!priceCents || priceCents === 0) return true // Free coaches included
-        return priceCents < 3000
+        if (pricingModel === 'free') return true
+        if (pricingModel === 'both') return true // Has free option
+        return priceCents && priceCents < 5000
       })
     }
     
-    // Hired within filter
+    // Hired within filter - use hired_date field
     if (hiredWithinFilter !== 'all') {
       const now = new Date()
       filtered = filtered.filter(mentor => {
-        const createdAt = mentor.mentor_data?.created_at
-        if (!createdAt) return true // Include if no date
+        const hiredDate = mentor.mentor_data?.hired_date
+        if (!hiredDate) return false // Exclude if no hired date
         
-        const created = new Date(createdAt)
-        const diffMonths = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24 * 30))
+        const hired = new Date(hiredDate)
+        const diffMonths = Math.floor((now.getTime() - hired.getTime()) / (1000 * 60 * 60 * 24 * 30))
         
         switch (hiredWithinFilter) {
           case '3months': return diffMonths <= 3
@@ -174,25 +179,31 @@ export default function CoachesPage() {
       })
     }
     
-    // Specialization filter
+    // Specialization filter - use specializations field (source of truth)
     if (selectedSpecializations.length > 0) {
       filtered = filtered.filter(mentor => {
-        const jobTypeTags = mentor.mentor_data?.job_type_tags || []
-        const focusAreas = mentor.mentor_data?.focus_areas || []
-        const allTags = [...jobTypeTags, ...focusAreas].map(t => t.toLowerCase())
+        const specializations = mentor.mentor_data?.specializations || []
+        const normalizedSpecs = specializations.map(s => s.toLowerCase())
         return selectedSpecializations.some(spec => 
-          allTags.some(tag => tag.includes(spec.toLowerCase()))
+          normalizedSpecs.some(s => s.includes(spec.toLowerCase()) || spec.toLowerCase().includes(s))
         )
       })
     }
     
-    // Session type filter
+    // Session type filter - use session_types field and offers_referrals
     if (selectedSessionTypes.length > 0) {
       filtered = filtered.filter(mentor => {
-        const focusAreas = mentor.mentor_data?.focus_areas || []
-        return selectedSessionTypes.some(type => 
-          focusAreas.some(area => area.toLowerCase().includes(type.toLowerCase()))
-        )
+        const sessionTypes = mentor.mentor_data?.session_types || []
+        const offersReferrals = mentor.mentor_data?.offers_referrals || false
+        const normalizedTypes = sessionTypes.map(t => t.toLowerCase())
+        
+        return selectedSessionTypes.some(type => {
+          // Special handling for referrals
+          if (type.toLowerCase().includes('referral')) {
+            return offersReferrals
+          }
+          return normalizedTypes.some(t => t.includes(type.toLowerCase()) || type.toLowerCase().includes(t))
+        })
       })
     }
     
@@ -201,8 +212,45 @@ export default function CoachesPage() {
       filtered = filtered.filter(mentor => mentorAvailability[mentor.id] === true)
     }
     
+    // Apply sorting
+    filtered = sortMentors(filtered, sortBy)
+    
     setFilteredMentors(filtered)
-  }, [searchQuery, selectedCompanies, priceFilter, hiredWithinFilter, selectedSpecializations, selectedSessionTypes, availabilityFilter, mentors, mentorAvailability])
+  }, [searchQuery, selectedCompanies, priceFilter, hiredWithinFilter, selectedSpecializations, selectedSessionTypes, availabilityFilter, mentors, mentorAvailability, sortBy])
+  
+  // Sorting function
+  const sortMentors = (mentorList: MentorWithDetails[], sort: string) => {
+    const sorted = [...mentorList]
+    switch (sort) {
+      case 'sessions':
+        return sorted.sort((a, b) => {
+          const sessionsA = a.mentor_data?.review_count || 0
+          const sessionsB = b.mentor_data?.review_count || 0
+          return sessionsB - sessionsA
+        })
+      case 'price_low':
+        return sorted.sort((a, b) => {
+          const priceA = a.mentor_data?.price_cents || 0
+          const priceB = b.mentor_data?.price_cents || 0
+          return priceA - priceB
+        })
+      case 'price_high':
+        return sorted.sort((a, b) => {
+          const priceA = a.mentor_data?.price_cents || 0
+          const priceB = b.mentor_data?.price_cents || 0
+          return priceB - priceA
+        })
+      case 'newest':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.mentor_data?.hired_date || a.mentor_data?.created_at || 0).getTime()
+          const dateB = new Date(b.mentor_data?.hired_date || b.mentor_data?.created_at || 0).getTime()
+          return dateB - dateA
+        })
+      case 'relevance':
+      default:
+        return sorted // Keep original order for relevance
+    }
+  }
   
   // Re-check availability when filter changes
   useEffect(() => {
@@ -222,11 +270,79 @@ export default function CoachesPage() {
   const handleReset = () => {
     setSearchQuery('')
     setSelectedCompanies([])
+    setCompanySearchQuery('')
     setPriceFilter('all')
     setHiredWithinFilter('all')
     setSelectedSpecializations([])
     setSelectedSessionTypes([])
     setAvailabilityFilter('all')
+    setSortBy('relevance')
+  }
+  
+  // Get all unique specializations from mentors
+  const getAllSpecializations = () => {
+    const specsSet = new Set<string>()
+    mentors.forEach(mentor => {
+      const specs = mentor.mentor_data?.specializations || []
+      specs.forEach(s => specsSet.add(s))
+    })
+    return Array.from(specsSet).sort()
+  }
+  
+  // Get all unique session types from mentors
+  const getAllSessionTypes = () => {
+    const typesSet = new Set<string>()
+    mentors.forEach(mentor => {
+      const types = mentor.mentor_data?.session_types || []
+      types.forEach(t => typesSet.add(t))
+      // Add referrals if any mentor offers them
+      if (mentor.mentor_data?.offers_referrals) {
+        typesSet.add('Referrals available')
+      }
+    })
+    return Array.from(typesSet).sort()
+  }
+  
+  // Get sort label for display
+  const getSortLabel = (sort: string) => {
+    switch (sort) {
+      case 'sessions': return 'Most Sessions'
+      case 'price_low': return 'Lowest Price'
+      case 'price_high': return 'Highest Price'
+      case 'newest': return 'Newest Coaches'
+      default: return 'Relevance'
+    }
+  }
+  
+  // Decode HTML entities in strings - handles multiple levels of encoding
+  const decodeHtmlEntities = (str: string) => {
+    if (!str) return str
+    
+    let decoded = str
+    let previousDecoded = ''
+    
+    // Keep decoding until no more changes occur (handles multiple encoding levels)
+    while (decoded !== previousDecoded) {
+      previousDecoded = decoded
+      
+      if (typeof document !== 'undefined') {
+        const textarea = document.createElement('textarea')
+        textarea.innerHTML = decoded
+        decoded = textarea.value
+      } else {
+        // Server-side fallback: handle common entities
+        decoded = decoded
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x2F;/g, '/')
+          .replace(/&#47;/g, '/')
+          .replace(/&apos;/g, "'")
+      }
+    }
+    
+    return decoded
   }
   
   const handleSpecializationToggle = (spec: string) => {
@@ -242,7 +358,14 @@ export default function CoachesPage() {
   }
   
   const allCompanies = getAllCompanies()
-  const topCompanies = allCompanies.slice(0, 10) // Show top 10 companies
+  // Filter companies by search query and limit display
+  const filteredCompanies = companySearchQuery.trim()
+    ? allCompanies.filter(c => c.toLowerCase().includes(companySearchQuery.toLowerCase()))
+    : allCompanies
+  const displayedCompanies = filteredCompanies.slice(0, 15) // Show top 15 companies
+  
+  const allSpecializations = getAllSpecializations()
+  const allSessionTypes = getAllSessionTypes()
   return (
     <Layout variant="landing">
 
@@ -269,18 +392,36 @@ export default function CoachesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
-                      <div className="space-y-3 pt-2 pb-2 max-h-64 overflow-y-auto">
-                        {topCompanies.map(company => (
-                          <label key={company} className="flex items-center gap-3 cursor-pointer">
-                            <input 
-                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
-                              type="checkbox"
-                              checked={selectedCompanies.includes(company)}
-                              onChange={() => handleCompanyToggle(company)}
-                            />
-                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{company}</span>
-                          </label>
-                        ))}
+                      <div className="pt-2 pb-2">
+                        {/* Company search input */}
+                        <input
+                          type="text"
+                          placeholder="Search companies..."
+                          value={companySearchQuery}
+                          onChange={(e) => setCompanySearchQuery(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-[#E2E8F0] dark:border-[#374151] rounded-md bg-transparent focus:outline-none focus:ring-1 focus:ring-[#0ea5e9] mb-3"
+                        />
+                        <div className="space-y-3 max-h-48 overflow-y-auto">
+                          {displayedCompanies.map((company: string) => (
+                            <label key={company} className="flex items-center gap-3 cursor-pointer">
+                              <input 
+                                className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                                type="checkbox"
+                                checked={selectedCompanies.includes(company)}
+                                onChange={() => handleCompanyToggle(company)}
+                              />
+                              <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{company}</span>
+                            </label>
+                          ))}
+                          {filteredCompanies.length > 15 && (
+                            <p className="text-xs text-[#64748B] dark:text-[#9CA3AF] pt-2">
+                              +{filteredCompanies.length - 15} more companies. Use search to find specific ones.
+                            </p>
+                          )}
+                          {displayedCompanies.length === 0 && (
+                            <p className="text-xs text-[#64748B] dark:text-[#9CA3AF]">No companies found</p>
+                          )}
+                        </div>
                       </div>
                     </details>
 
@@ -328,10 +469,10 @@ export default function CoachesPage() {
                             className="form-radio text-[#0ea5e9] focus:ring-[#0ea5e9]/50 bg-transparent border-[#E2E8F0] dark:border-[#374151]" 
                             name="priceFilter" 
                             type="radio"
-                            checked={priceFilter === 'under30'}
-                            onChange={() => setPriceFilter('under30')}
+                            checked={priceFilter === 'under50'}
+                            onChange={() => setPriceFilter('under50')}
                           />
-                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Under $30</span>
+                          <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">Under $50</span>
                         </label>
                       </div>
                     </details>
@@ -372,24 +513,22 @@ export default function CoachesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
-                      <div className="space-y-3 pt-2 pb-2">
-                        {[
-                          'APM programs',
-                          'Technical PM',
-                          'Consumer products',
-                          'B2B/Enterprise',
-                          'Data/Analytics PM',
-                        ].map(spec => (
-                          <label key={spec} className="flex items-center gap-3 cursor-pointer">
-                            <input 
-                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
-                              type="checkbox"
-                              checked={selectedSpecializations.includes(spec)}
-                              onChange={() => handleSpecializationToggle(spec)}
-                            />
-                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{spec}</span>
-                          </label>
-                        ))}
+                      <div className="space-y-3 pt-2 pb-2 max-h-48 overflow-y-auto">
+                        {allSpecializations.length > 0 ? (
+                          allSpecializations.map((spec: string) => (
+                            <label key={spec} className="flex items-center gap-3 cursor-pointer">
+                              <input 
+                                className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                                type="checkbox"
+                                checked={selectedSpecializations.includes(spec)}
+                                onChange={() => handleSpecializationToggle(spec)}
+                              />
+                              <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{decodeHtmlEntities(spec)}</span>
+                            </label>
+                          ))
+                        ) : (
+                          <p className="text-xs text-[#64748B] dark:text-[#9CA3AF]">No specializations available</p>
+                        )}
                       </div>
                     </details>
 
@@ -401,23 +540,22 @@ export default function CoachesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
-                      <div className="space-y-3 pt-2 pb-2">
-                        {[
-                          'Resume review',
-                          'Mock interview',
-                          'Career advice',
-                          'Referrals available',
-                        ].map(type => (
-                          <label key={type} className="flex items-center gap-3 cursor-pointer">
-                            <input 
-                              className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
-                              type="checkbox"
-                              checked={selectedSessionTypes.includes(type)}
-                              onChange={() => handleSessionTypeToggle(type)}
-                            />
-                            <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{type}</span>
-                          </label>
-                        ))}
+                      <div className="space-y-3 pt-2 pb-2 max-h-48 overflow-y-auto">
+                        {allSessionTypes.length > 0 ? (
+                          allSessionTypes.map((type: string) => (
+                            <label key={type} className="flex items-center gap-3 cursor-pointer">
+                              <input 
+                                className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
+                                type="checkbox"
+                                checked={selectedSessionTypes.includes(type)}
+                                onChange={() => handleSessionTypeToggle(type)}
+                              />
+                              <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{type}</span>
+                            </label>
+                          ))
+                        ) : (
+                          <p className="text-xs text-[#64748B] dark:text-[#9CA3AF]">No session types available</p>
+                        )}
                       </div>
                     </details>
 
@@ -489,13 +627,40 @@ export default function CoachesPage() {
                       />
                     </div>
                   </div>
-                  <div className="shrink-0">
-                    <button className="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#ffffff] dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] pl-4 pr-3 transition-colors hover:border-[#0ea5e9]">
-                      <p className="text-sm font-medium">Sort by: Relevance</p>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="shrink-0 relative">
+                    <button 
+                      onClick={() => setShowSortDropdown(!showSortDropdown)}
+                      className="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#ffffff] dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] pl-4 pr-3 transition-colors hover:border-[#0ea5e9]"
+                    >
+                      <p className="text-sm font-medium">Sort by: {getSortLabel(sortBy)}</p>
+                      <svg className={`w-5 h-5 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
+                    {showSortDropdown && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] rounded-lg shadow-lg z-50">
+                        {[
+                          { value: 'relevance', label: 'Relevance' },
+                          { value: 'sessions', label: 'Most Sessions' },
+                          { value: 'price_low', label: 'Lowest Price' },
+                          { value: 'price_high', label: 'Highest Price' },
+                          { value: 'newest', label: 'Newest Coaches' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              setSortBy(option.value as typeof sortBy)
+                              setShowSortDropdown(false)
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-[#F7F9FB] dark:hover:bg-[#374151] first:rounded-t-lg last:rounded-b-lg ${
+                              sortBy === option.value ? 'text-[#0ea5e9] font-medium' : 'text-[#64748B] dark:text-[#9CA3AF]'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

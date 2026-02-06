@@ -16,6 +16,7 @@ interface TimeSlot {
 export default function MentorAvailability() {
   const [loading, setLoading] = useState(true)
   const [weeklyAvailability, setWeeklyAvailability] = useState<TimeSlot[]>([])
+  const [savedTimezone, setSavedTimezone] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     fetchWeeklyAvailability()
@@ -27,6 +28,10 @@ export default function MentorAvailability() {
       if (response.ok) {
         const data = await response.json()
         setWeeklyAvailability(data.slots || [])
+        // Get saved timezone from the API response
+        if (data.timezone) {
+          setSavedTimezone(data.timezone)
+        }
       }
     } catch (error) {
       console.error('Error fetching weekly availability:', error)
@@ -63,18 +68,20 @@ export default function MentorAvailability() {
         <CardContent className="p-4">
           <WeeklyAvailabilityGrid
             initialAvailability={weeklyAvailability}
-            onSave={async (availability) => {
+            initialTimezone={savedTimezone}
+            onSave={async (availability, timezone) => {
               try {
                 const response = await fetch('/api/availability/weekly', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     slots: availability,
-                    timezone: getUserTimezone()
+                    timezone: timezone
                   })
                 })
                 if (response.ok) {
                   setWeeklyAvailability(availability)
+                  setSavedTimezone(timezone)
                   toast.success('Weekly availability saved!')
                 } else {
                   const error = await response.json()

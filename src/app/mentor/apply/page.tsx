@@ -56,7 +56,9 @@ export default function CoachApplicationPage() {
     specializations: [] as string[],
     sessionTypes: [] as string[],
     offersReferrals: false,
-    hiredDate: ''
+    hiredDate: '',
+    // Interview experience
+    totalInterviews: 0
   })
 
   const focusAreaOptions = [
@@ -333,7 +335,9 @@ export default function CoachApplicationPage() {
           specializations: formData.specializations,
           sessionTypes: formData.sessionTypes,
           offersReferrals: formData.offersReferrals,
-          hiredDate: formData.hiredDate || undefined
+          hiredDate: formData.hiredDate || undefined,
+          // Interview experience
+          totalInterviews: formData.totalInterviews || 0
         })
       })
 
@@ -518,22 +522,44 @@ export default function CoachApplicationPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="yearsExperience" className="block text-sm font-medium text-[#333333] dark:text-white">
-                  Years of Experience
-                </label>
-                <input
-                  id="yearsExperience"
-                  name="yearsExperience"
-                  type="number"
-                  min="0"
-                  step="1"
-                  required
-                  value={formData.yearsExperience}
-                  onChange={handleNumberChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                  placeholder="5"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="yearsExperience" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Years of Experience
+                  </label>
+                  <input
+                    id="yearsExperience"
+                    name="yearsExperience"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={formData.yearsExperience}
+                    onChange={handleNumberChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="5"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="totalInterviews" className="block text-sm font-medium text-[#333333] dark:text-white">
+                    Number of Interviews
+                  </label>
+                  <input
+                    id="totalInterviews"
+                    name="totalInterviews"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.totalInterviews}
+                    onChange={handleNumberChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
+                    placeholder="10"
+                  />
+                  <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                    Approximate number of interviews you've done for this role/company
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -97,6 +97,8 @@ export const coachApplicationSchema = z.object({
   sessionTypes: z.array(z.string().max(50)).max(10).optional(),
   offersReferrals: z.boolean().optional(),
   hiredDate: z.string().optional(), // ISO date string
+  // Interview experience
+  totalInterviews: z.number().int().min(0).max(10000).optional(),
 }).strict()
 
 // Mentor onboarding validation
@@ -145,6 +147,8 @@ export const updateMentorProfileSchema = z.object({
   session_types: z.array(z.string().max(50)).max(10).optional(),
   offers_referrals: z.boolean().optional(),
   hired_date: z.string().optional(),
+  // Interview experience
+  total_interviews: z.number().int().min(0).max(10000).optional(),
 }).strict()
 
 // Checkout session validation

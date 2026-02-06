@@ -49,7 +49,14 @@ export default function SignUpPage() {
 
       if (error) {
         console.error('Signup error:', error)
-        setError(error.message)
+        // Customize password validation error message
+        let errorMessage = error.message
+        if (errorMessage.includes('abcdefghijklmnopqrstuvwxyz') || 
+            errorMessage.includes('ABCDEFGHIJKLMNOPQRSTUVWXYZ') || 
+            errorMessage.includes('0123456789')) {
+          errorMessage = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+        }
+        setError(errorMessage)
         setLoading(false)
         return
       }

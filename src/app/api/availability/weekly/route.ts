@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
       minute: slot.minute || 0
     })) || []
 
-    return NextResponse.json({ slots })
+    // Get the timezone from the first slot (they should all be the same)
+    const timezone = data?.[0]?.timezone || null
+
+    return NextResponse.json({ slots, timezone })
   } catch (error) {
     console.error('Error in weekly availability GET:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -58,8 +58,8 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
   const hiredDate = mentor.mentor_data?.hired_date;
   const monthsSinceHired = getMonthsSinceHired(hiredDate);
   
-  // Count total interviews (companies interviewed + companies got offers)
-  const totalInterviews = companiesInterviewed.length + companiesGotOffers.length;
+  // Get total interviews from the database field
+  const totalInterviews = mentor.mentor_data?.total_interviews || 0;
 
   return (
     <div className="font-display bg-[#F8FAFC] dark:bg-[#020617] text-[#0f172a] dark:text-[#F8FAFC]">

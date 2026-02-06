@@ -30,11 +30,37 @@ export function createSafeErrorResponse(
  * Sanitizes error messages to prevent information leakage
  */
 export function handleValidationError(error: ZodError): NextResponse {
-  // Format validation errors in a user-friendly way
-  const formattedErrors = error.issues.map((err: any) => ({
-    field: err.path.join('.'),
-    message: err.message,
-  }))
+  // Format validation errors in a user-friendly way with field-specific codes
+  const formattedErrors = error.issues.map((err: any) => {
+    const field = err.path.join('.')
+    let code = 'invalid'
+    let message = err.message
+    
+    // Determine error code based on validation type
+    if (err.code === 'too_small') {
+      code = err.type === 'string' ? 'too_short' : 'too_small'
+      if (err.minimum !== undefined) {
+        message = `${field} must be at least ${err.minimum} ${err.type === 'string' ? 'characters' : ''}`
+      }
+    } else if (err.code === 'too_big') {
+      code = err.type === 'string' ? 'too_long' : 'too_big'
+      if (err.maximum !== undefined) {
+        message = `${field} must be at most ${err.maximum} ${err.type === 'string' ? 'characters' : ''}`
+      }
+    } else if (err.code === 'invalid_type') {
+      code = 'invalid_type'
+      message = `${field} has invalid type`
+    } else if (err.code === 'invalid_string') {
+      code = 'invalid_format'
+      message = `${field} has invalid format`
+    }
+    
+    return {
+      field,
+      code,
+      message,
+    }
+  })
   
   console.error('[Validation] Validation failed:', formattedErrors)
   
