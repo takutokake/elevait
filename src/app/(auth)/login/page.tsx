@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,8 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,8 +37,13 @@ export default function LoginPage() {
         return
       }
 
-      // success → send to central callback router, which decides onboarding vs dashboard
-      router.replace('/auth/callback')
+      // If there's a return URL, redirect there after login
+      if (returnUrl) {
+        router.replace(returnUrl)
+      } else {
+        // Otherwise, send to central callback router, which decides onboarding vs dashboard
+        router.replace('/auth/callback')
+      }
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -51,10 +58,15 @@ export default function LoginPage() {
     try {
       const supabase = getSupabaseBrowserClient()
       
+      // Include returnUrl in the callback URL if present
+      const callbackUrl = returnUrl 
+        ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
+        : `${window.location.origin}/auth/callback`
+      
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl,
         },
       })
     } catch (err) {

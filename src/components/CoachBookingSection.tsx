@@ -89,12 +89,14 @@ export default function CoachBookingSection({
   const handleOpenBooking = async () => {
     // Check if user is authenticated first
     if (isAuthenticated === false) {
-      // Redirect to signup page with student role
-      toast.info('Please sign up to book a session')
-      router.push('/signup?role=student')
+      // Redirect to login page with return URL to come back after authentication
+      toast.info('Please log in to book a session')
+      const currentPath = window.location.pathname
+      router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`)
       return
     }
 
+    // If authenticated, proceed with booking flow
     setLoading(true)
     try {
       // Fetch availability for next 30 days

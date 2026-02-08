@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 
 export default function AuthCallbackPage() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl')
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        console.log('[Callback] Starting auth callback...')
+        console.log('[Callback] Starting auth callback...', returnUrl ? `returnUrl: ${returnUrl}` : '')
         const supabase = getSupabaseBrowserClient()
         
         // Get the current user
@@ -155,8 +157,16 @@ export default function AuthCallbackPage() {
           role: profile.role,
           storedRole,
           effectiveRole,
-          needsAutoComplete
+          needsAutoComplete,
+          returnUrl
         })
+        
+        // If there's a returnUrl and user has completed onboarding, redirect there
+        if (returnUrl && profile.onboarding_complete) {
+          console.log('[Callback] Redirecting to returnUrl:', returnUrl)
+          router.replace(returnUrl)
+          return
+        }
         
         if (!profile.onboarding_complete) {
           if (effectiveRole === 'mentor') {
