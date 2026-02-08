@@ -239,7 +239,7 @@ export default function StudentSessions() {
                 No upcoming sessions scheduled.
               </p>
               <a 
-                href="/mentors" 
+                href="/coaches" 
                 className="text-[#0ea5e9] hover:text-[#0ea5e9]/80 font-medium"
               >
                 Find a mentor to book your first session →

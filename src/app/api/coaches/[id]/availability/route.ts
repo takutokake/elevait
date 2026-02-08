@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
+import { fromZonedTime } from 'date-fns-tz'
 
 interface WeeklySlot {
   day_of_week: number
@@ -74,11 +75,14 @@ function generateSlotsFromWeeklyAvailability(
             }
           } else {
             // Save current block and start a new one
-            const startTime = new Date(currentDate)
-            startTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+            // Create date in the mentor's timezone, then convert to UTC
+            const localStartTime = new Date(currentDate)
+            localStartTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+            const startTime = fromZonedTime(localStartTime, timezone)
             
-            const endTime = new Date(currentDate)
-            endTime.setHours(blockEnd!.hour, blockEnd!.minute, 0, 0)
+            const localEndTime = new Date(currentDate)
+            localEndTime.setHours(blockEnd!.hour, blockEnd!.minute, 0, 0)
+            const endTime = fromZonedTime(localEndTime, timezone)
             
             // Only add if the slot is in the future
             if (startTime > new Date()) {
@@ -103,11 +107,14 @@ function generateSlotsFromWeeklyAvailability(
       
       // Don't forget the last block
       if (blockStart !== null && blockEnd !== null) {
-        const startTime = new Date(currentDate)
-        startTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+        // Create date in the mentor's timezone, then convert to UTC
+        const localStartTime = new Date(currentDate)
+        localStartTime.setHours(blockStart.hour, blockStart.minute, 0, 0)
+        const startTime = fromZonedTime(localStartTime, timezone)
         
-        const endTime = new Date(currentDate)
-        endTime.setHours(blockEnd.hour, blockEnd.minute, 0, 0)
+        const localEndTime = new Date(currentDate)
+        localEndTime.setHours(blockEnd.hour, blockEnd.minute, 0, 0)
+        const endTime = fromZonedTime(localEndTime, timezone)
         
         // Only add if the slot is in the future
         if (startTime > new Date()) {

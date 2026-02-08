@@ -191,7 +191,7 @@ export default function StudentDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <a
-              href="/mentors"
+              href="/coaches"
               className="block p-6 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <h3 className="font-semibold text-[#333333] dark:text-white mb-2">

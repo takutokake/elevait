@@ -98,7 +98,7 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     )}
                     <div className="flex-1">
                       <div className="flex flex-col gap-3">
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
                           <div className="flex-1">
                             <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Anonymous Coach"}</h1>
                             <div className="flex items-center gap-2 mt-1">
@@ -113,11 +113,13 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                               )}
                             </div>
                           </div>
-                          <BookmarkButton mentorId={id} size="md" variant="profile" />
+                          <div className="flex-shrink-0">
+                            <BookmarkButton mentorId={id} size="md" variant="profile" />
+                          </div>
                         </div>
                         
                         {/* Badges Row */}
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="flex flex-wrap gap-2">
                           {monthsSinceHired !== null && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm font-medium">
                               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
