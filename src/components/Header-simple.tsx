@@ -132,7 +132,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
           <Logo size="lg" href="/" />
         </div>
         
-        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
+        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center ml-[-60px]">
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
             Coaches
           </Link>
