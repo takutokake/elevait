@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import BookingModal from './BookingModal'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 
 interface AvailabilitySlot {
   id: string
@@ -42,23 +43,32 @@ export default function CoachBookingSection({
   const [noAvailability, setNoAvailability] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
-  // Check authentication status on mount
+  // Check authentication status on mount using Supabase directly
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/session')
-        if (response.ok) {
-          const data = await response.json()
-          setIsAuthenticated(!!data.user)
-        } else {
-          setIsAuthenticated(false)
-        }
+        console.log('[Booking] Checking authentication status...')
+        const supabase = getSupabaseBrowserClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log('[Booking] Session check result:', !!session?.user, session?.user?.id)
+        setIsAuthenticated(!!session?.user)
       } catch (error) {
-        console.error('Error checking auth:', error)
+        console.error('[Booking] Error checking auth:', error)
         setIsAuthenticated(false)
       }
     }
     checkAuth()
+    
+    // Also listen for auth state changes
+    const supabase = getSupabaseBrowserClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Booking] Auth state changed:', event, !!session?.user)
+      setIsAuthenticated(!!session?.user)
+    })
+    
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const fetchAvailability = async () => {
@@ -88,13 +98,18 @@ export default function CoachBookingSection({
 
   const handleOpenBooking = async () => {
     // Check if user is authenticated first
+    console.log('[Booking] handleOpenBooking called, isAuthenticated:', isAuthenticated)
+    
     if (isAuthenticated === false) {
       // Redirect to login page with return URL to come back after authentication
-      toast.info('Please log in to book a session')
       const currentPath = window.location.pathname
+      console.log('[Booking] User not authenticated, redirecting to login with returnUrl:', currentPath)
+      toast.info('Please log in to book a session')
       router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`)
       return
     }
+    
+    console.log('[Booking] User is authenticated, proceeding with booking flow')
 
     // If authenticated, proceed with booking flow
     setLoading(true)

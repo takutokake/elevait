@@ -24,27 +24,34 @@ function LoginForm() {
     setLoading(true)
     setError('')
 
+    console.log('[Login] Form submitted, returnUrl:', returnUrl)
+
     try {
       const supabase = getSupabaseBrowserClient()
       
+      console.log('[Login] Attempting sign in with email:', formData.email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password
       })
 
       if (error) {
+        console.error('[Login] Sign in error:', error)
         setError(error.message)
         return
       }
 
-      // If there's a return URL, redirect there after login
-      if (returnUrl) {
-        router.replace(returnUrl)
-      } else {
-        // Otherwise, send to central callback router, which decides onboarding vs dashboard
-        router.replace('/auth/callback')
-      }
+      console.log('[Login] Sign in successful, user:', data.user?.id)
+
+      // Always go through callback, pass returnUrl if present
+      const callbackUrl = returnUrl 
+        ? `/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
+        : '/auth/callback'
+      
+      console.log('[Login] Redirecting to:', callbackUrl)
+      router.replace(callbackUrl)
     } catch (err) {
+      console.error('[Login] Unexpected error:', err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
