@@ -96,22 +96,25 @@ export function sanitizeEmail(email: string | null | undefined): string {
  * Sanitize URL
  * Ensures URL is safe and uses allowed protocols
  */
-export function sanitizeUrl(url: string | null | undefined): string {
-  if (!url) return ''
+export function sanitizeUrl(url: string | null | undefined): string | null {
+  if (!url || url === '') return null
   
   const cleaned = String(url).trim()
+  
+  // Allow empty string explicitly
+  if (cleaned === '') return null
   
   try {
     const parsed = new URL(cleaned)
     
     // Only allow http, https protocols
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return ''
+      return null
     }
     
     return parsed.toString()
   } catch {
-    return ''
+    return null
   }
 }
 

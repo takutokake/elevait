@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getMentorById, getMentorInitials, formatHourlyRate } from "@/lib/mentorHelpers";
 import CoachBookingSection from "@/components/CoachBookingSection";
 import Header from "@/components/Header-simple";
+import BookmarkButton from "@/components/BookmarkButton";
 
 interface CoachProfileProps {
   params: Promise<{
@@ -97,19 +98,22 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     )}
                     <div className="flex-1">
                       <div className="flex flex-col gap-3">
-                        <div>
-                          <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Anonymous Coach"}</h1>
-                          <div className="flex items-center gap-2 mt-1">
-                            {mentor.mentor_data?.current_title && (
-                              <span className="text-lg text-[#0ea5e9] font-semibold">{mentor.mentor_data.current_title}</span>
-                            )}
-                            {mentor.mentor_data?.current_title && mentor.mentor_data?.current_company && (
-                              <span className="text-[#64748B] dark:text-[#94A3B8]">@</span>
-                            )}
-                            {mentor.mentor_data?.current_company && (
-                              <span className="text-lg text-[#64748B] dark:text-[#94A3B8] font-medium">{mentor.mentor_data.current_company}</span>
-                            )}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Anonymous Coach"}</h1>
+                            <div className="flex items-center gap-2 mt-1">
+                              {mentor.mentor_data?.current_title && (
+                                <span className="text-lg text-[#0ea5e9] font-semibold">{mentor.mentor_data.current_title}</span>
+                              )}
+                              {mentor.mentor_data?.current_title && mentor.mentor_data?.current_company && (
+                                <span className="text-[#64748B] dark:text-[#94A3B8]">@</span>
+                              )}
+                              {mentor.mentor_data?.current_company && (
+                                <span className="text-lg text-[#64748B] dark:text-[#94A3B8] font-medium">{mentor.mentor_data.current_company}</span>
+                              )}
+                            </div>
                           </div>
+                          <BookmarkButton mentorId={id} size="md" variant="profile" />
                         </div>
                         
                         {/* Badges Row */}

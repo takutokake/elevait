@@ -40,17 +40,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     // SECURITY: Sanitize inputs
-    const full_name = sanitizeText(validatedData.full_name, 200)
-    const avatar_url = sanitizeUrl(validatedData.avatar_url)
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+    
+    if (validatedData.full_name !== undefined) {
+      updateData.full_name = sanitizeText(validatedData.full_name, 200)
+    }
+    
+    if (validatedData.avatar_url !== undefined) {
+      const sanitizedUrl = sanitizeUrl(validatedData.avatar_url)
+      if (sanitizedUrl !== null) {
+        updateData.avatar_url = sanitizedUrl
+      }
+    }
 
     // Update profile
     const { data, error } = await supabase
       .from('profiles')
-      .update({
-        full_name,
-        avatar_url,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', user.id)
       .select()
       .single()

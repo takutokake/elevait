@@ -132,22 +132,17 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
           <Logo size="lg" href="/" />
         </div>
         
-        <div className="hidden lg:flex items-center justify-center absolute left-1/2 -translate-x-1/2">
-          <nav className="flex items-center gap-8">
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
-              Coaches
-            </Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
-              Job Board
-            </Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/about">
-              About
-            </Link>
-            <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/blog">
-              Blog
-            </Link>
-          </nav>
-        </div>
+        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center ml-[-80px]">
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
+            Coaches
+          </Link>
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
+            Job Board
+          </Link>
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/blog">
+            Blog
+          </Link>
+        </nav>
         
         <div className="hidden lg:flex gap-2">
           {isLoading ? (
@@ -187,9 +182,6 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
             </Link>
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/jobs">
               Job Board
-            </Link>
-            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/about">
-              About
             </Link>
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/blog">
               Blog

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MentorWithDetails } from "@/types/mentor";
 import { getMentorInitials } from "@/lib/mentorUtils";
+import BookmarkButton from "./BookmarkButton";
 
 interface CoachCardProps {
   mentor: MentorWithDetails;
@@ -73,10 +74,14 @@ export default function CoachCard({ mentor }: CoachCardProps) {
   return (
     <Link 
       href={`/coaches/${mentor.id}`}
-      className="group flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300"
+      className="group flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300 relative"
     >
+      <div className="absolute top-3 right-3 z-10">
+        <BookmarkButton mentorId={mentor.id} size="sm" variant="card" />
+      </div>
+      
       <div className="p-6 flex flex-col h-full">
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-start gap-4 mb-4 pr-8">
           <div className="relative">
             {mentor.avatar_url ? (
               <img 

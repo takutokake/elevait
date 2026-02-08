@@ -117,8 +117,8 @@ export const mentorOnboardingSchema = z.object({
 // Profile update validation
 export const updateProfileSchema = z.object({
   full_name: z.string().min(1).max(200).trim().optional(),
-  avatar_url: urlSchema.optional(),
-}).strict()
+  avatar_url: z.union([urlSchema, z.literal(''), z.null()]).optional().nullable(),
+})
 
 // Mentor profile update validation
 export const updateMentorProfileSchema = z.object({
