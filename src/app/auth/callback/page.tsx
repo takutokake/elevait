@@ -29,13 +29,25 @@ function AuthCallbackContent() {
           return
         }
 
-        // Call /api/me to get user profile data
+        // Call /api/me to get user profile data with timeout
         console.log('[Callback] Fetching /api/me...')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+        
         const response = await fetch('/api/me', {
           credentials: 'include',
           headers: {
             'Cache-Control': 'no-cache'
+          },
+          signal: controller.signal
+        }).catch((err) => {
+          if (err.name === 'AbortError') {
+            console.error('[Callback] /api/me request timed out after 10 seconds')
+            throw new Error('Request timed out')
           }
+          throw err
+        }).finally(() => {
+          clearTimeout(timeoutId)
         })
         
         console.log('[Callback] /api/me response status:', response.status)
@@ -192,6 +204,10 @@ function AuthCallbackContent() {
         }
       } catch (error) {
         console.error('[Callback] Auth callback error:', error)
+        
+        // Show user-friendly error message
+        alert('Authentication failed. Please try logging in again.')
+        
         setTimeout(() => {
           router.replace('/login')
         }, 1000)
@@ -202,7 +218,7 @@ function AuthCallbackContent() {
     }
 
     handleAuthCallback()
-  }, [router])
+  }, [router, returnUrl])
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#101c22] flex items-center justify-center">
