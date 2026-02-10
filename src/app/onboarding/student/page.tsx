@@ -25,8 +25,7 @@ export default function StudentOnboardingPage() {
     alumniSchool: '',
     track: 'product' as 'product' | 'eng' | 'design',
     pmFocusAreas: [] as string[],
-    priceRangeMinDollars: 50,
-    priceRangeMaxDollars: 200,
+    sessionTypes: [] as string[],
     referredBy: ''
   })
 
@@ -38,6 +37,15 @@ export default function StudentOnboardingPage() {
     'Product leadership',
     'Behavioral',
     'Others'
+  ]
+
+  const sessionTypeOptions = [
+    'Mock interviews',
+    'Resume review',
+    'Career guidance',
+    'Product strategy',
+    'Portfolio review',
+    'Networking advice'
   ]
 
   // Check if user is logged in
@@ -80,6 +88,15 @@ export default function StudentOnboardingPage() {
       pmFocusAreas: checked
         ? [...prev.pmFocusAreas, area]
         : prev.pmFocusAreas.filter(a => a !== area)
+    }))
+  }
+
+  const handleSessionTypeChange = (type: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      sessionTypes: checked
+        ? [...prev.sessionTypes, type]
+        : prev.sessionTypes.filter(t => t !== type)
     }))
   }
 
@@ -169,6 +186,11 @@ export default function StudentOnboardingPage() {
             <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
               Tell us about yourself to get matched with the perfect coach
             </p>
+            <div className="mt-3 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+              <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium text-center">
+                🎁 Most sessions on Elevait are completely free!
+              </p>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Updated: Enhanced error display */}
@@ -286,40 +308,28 @@ export default function StudentOnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label htmlFor="priceRangeMinDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
-                    Min Budget <span className="text-[#f97316]">($)</span>
-                  </label>
-                  <input
-                    id="priceRangeMinDollars"
-                    name="priceRangeMinDollars"
-                    type="number"
-                    min="0"
-                    step="1"
-                    required
-                    value={formData.priceRangeMinDollars}
-                    onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                    placeholder="50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="priceRangeMaxDollars" className="block text-sm font-medium text-[#333333] dark:text-white">
-                    Max Budget <span className="text-[#f97316]">($)</span>
-                  </label>
-                  <input
-                    id="priceRangeMaxDollars"
-                    name="priceRangeMaxDollars"
-                    type="number"
-                    min="0"
-                    step="1"
-                    required
-                    value={formData.priceRangeMaxDollars}
-                    onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-[#8b5cf6] transition-colors"
-                    placeholder="200"
-                  />
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  Session Types You're Interested In
+                </label>
+                <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  Select the types of sessions you'd like to have with coaches
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {sessionTypeOptions.map((type) => (
+                    <div key={type} className="flex items-center space-x-3">
+                      <input
+                        id={type}
+                        type="checkbox"
+                        checked={formData.sessionTypes.includes(type)}
+                        onChange={(e) => handleSessionTypeChange(type, e.target.checked)}
+                        className="h-4 w-4 text-[#0ea5e9] focus:ring-[#8b5cf6] border-gray-300 dark:border-gray-600 rounded transition-colors"
+                      />
+                      <label htmlFor={type} className="text-sm text-[#333333] dark:text-white">
+                        {type}
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
 

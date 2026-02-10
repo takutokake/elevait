@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
-import { sendBookingRequestEmails } from '@/lib/emailService'
+import { sendBookingRequestEmails, sendAdminBookingNotification, sendSlackBookingNotification } from '@/lib/emailService'
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -183,8 +183,10 @@ export async function POST(request: NextRequest) {
           console.log('📨 Email data prepared:', emailData)
           
           await sendBookingRequestEmails(emailData)
+          await sendAdminBookingNotification(emailData)
+          await sendSlackBookingNotification(emailData)
 
-          console.log('✅ Booking confirmation emails sent after payment')
+          console.log('✅ Booking confirmation emails and Slack notification sent after payment')
         } catch (emailError) {
           console.error('❌ Failed to send booking emails:', emailError)
           // Don't fail the webhook if emails fail

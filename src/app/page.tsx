@@ -84,6 +84,12 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center relative">
           <div className="mx-auto max-w-4xl flex flex-col items-center">
 
+            {/* Free Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm border border-emerald-200/40 dark:border-emerald-700/40 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-semibold mb-4 shadow-sm">
+              <span className="text-base">🎁</span>
+              <span>Talk to coaches for free</span>
+            </div>
+
             <h1 className="text-5xl font-extrabold tracking-tight text-[#333333] dark:text-white sm:text-7xl mb-6 drop-shadow-sm">
               Learn from People Who <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0ea5e9] to-[#8b5cf6]">Just Went Through It</span>
             </h1>

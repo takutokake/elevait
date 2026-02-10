@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
-import { sendBookingRequestEmails } from '@/lib/emailService'
+import { sendBookingRequestEmails, sendAdminBookingNotification, sendSlackBookingNotification } from '@/lib/emailService'
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         
         console.log('📬 Sending booking confirmation emails...')
         
-        await sendBookingRequestEmails({
+        const emailData = {
           studentName: learnerProfile.full_name || 'Student',
           studentEmail: learnerEmail,
           coachName: mentorProfile.full_name || 'Coach',
@@ -181,9 +181,13 @@ export async function POST(request: NextRequest) {
           }),
           duration: `${durationMinutes} minutes`,
           sessionNotes: sessionNotes || undefined
-        })
+        }
+        
+        await sendBookingRequestEmails(emailData)
+        await sendAdminBookingNotification(emailData)
+        await sendSlackBookingNotification(emailData)
 
-        console.log('✅ Booking confirmation emails sent')
+        console.log('✅ Booking confirmation emails and Slack notification sent')
       } catch (emailError) {
         console.error('❌ Failed to send emails:', emailError)
         // Don't fail the request if emails fail

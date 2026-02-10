@@ -60,14 +60,10 @@ export const studentOnboardingSchema = z.object({
   alumniSchool: z.string().max(200).trim().optional(),
   track: z.string().max(100).trim(),
   pmFocusAreas: z.array(z.string().max(100)).max(10),
-  priceRangeMinDollars: z.number().min(0).max(10000),
-  priceRangeMaxDollars: z.number().min(0).max(10000),
+  sessionTypes: z.array(z.string().max(100)).max(10).optional(),
   avatarUrl: urlSchema.optional(),
   referredBy: z.string().max(200).trim().optional(),
-}).strict().refine(
-  (data) => data.priceRangeMaxDollars >= data.priceRangeMinDollars,
-  { message: 'Max price must be greater than or equal to min price' }
-)
+}).strict()
 
 // Coach application validation
 export const coachApplicationSchema = z.object({

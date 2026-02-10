@@ -367,3 +367,208 @@ export async function sendCancellationEmails(data: CancellationEmailData) {
   
   return results;
 }
+
+/**
+ * Send Slack notification when a new booking is created
+ * Sends to: Slack channel via webhook
+ */
+export async function sendSlackBookingNotification(data: BookingEmailData) {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL
+  
+  if (!webhookUrl) {
+    console.warn('SLACK_WEBHOOK_URL not configured - skipping Slack notification')
+    return null
+  }
+
+  const { studentName, studentEmail, coachName, coachEmail, bookingDate, bookingTime, duration, sessionNotes } = data
+
+  const message = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "🎯 New Booking Alert!",
+          emoji: true
+        }
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Student:*\n${studentName}\n${studentEmail}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Coach:*\n${coachName}\n${coachEmail}`
+          }
+        ]
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Date:*\n${bookingDate}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Time:*\n${bookingTime}`
+          }
+        ]
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Duration:* ${duration}${sessionNotes ? `\n*Notes:* ${sessionNotes}` : ''}`
+        }
+      },
+      {
+        type: "divider"
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: "📅 Booking created via Elevait"
+          }
+        ]
+      }
+    ]
+  }
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    })
+
+    if (!response.ok) {
+      throw new Error(`Slack API error: ${response.status}`)
+    }
+
+    console.log('✅ Slack notification sent')
+    return true
+  } catch (error) {
+    console.error('❌ Failed to send Slack notification:', error)
+    return null
+  }
+}
+
+/**
+ * Send admin notification email when a new booking is created
+ * Sends to: tryelevait@gmail.com
+ */
+export async function sendAdminBookingNotification(data: BookingEmailData) {
+  // Skip if Resend is not configured
+  if (!resend) {
+    console.warn('RESEND_API_KEY not configured - skipping admin notification')
+    return null
+  }
+
+  const { studentName, studentEmail, coachName, coachEmail, bookingDate, bookingTime, duration, sessionNotes } = data;
+
+  try {
+    const result = await resend.emails.send({
+      from: 'Elevait <bookings@elevait.space>',
+      to: 'tryelevait@gmail.com',
+      subject: `🎯 New Booking: ${studentName} → ${coachName}`,
+      replyTo: studentEmail,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+              .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316; }
+              .info-row { margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+              .info-row:last-child { border-bottom: none; }
+              .label { font-weight: bold; color: #f97316; display: inline-block; width: 120px; }
+              .value { color: #333; }
+              .highlight { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+              .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🎯 New Booking Alert!</h1>
+                <p style="margin: 0; font-size: 16px; opacity: 0.9;">A student just booked a session</p>
+              </div>
+              <div class="content">
+                <div class="highlight">
+                  <strong>📊 Quick Summary:</strong><br/>
+                  <strong>${studentName}</strong> booked a session with <strong>${coachName}</strong> on <strong>${bookingDate}</strong> at <strong>${bookingTime}</strong>
+                </div>
+                
+                <div class="info-box">
+                  <h3 style="margin-top: 0; color: #f97316;">👤 Student Details</h3>
+                  <div class="info-row">
+                    <span class="label">Name:</span>
+                    <span class="value">${studentName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Email:</span>
+                    <span class="value"><a href="mailto:${studentEmail}">${studentEmail}</a></span>
+                  </div>
+                </div>
+
+                <div class="info-box">
+                  <h3 style="margin-top: 0; color: #8b5cf6;">🎓 Coach Details</h3>
+                  <div class="info-row">
+                    <span class="label">Name:</span>
+                    <span class="value">${coachName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Email:</span>
+                    <span class="value"><a href="mailto:${coachEmail}">${coachEmail}</a></span>
+                  </div>
+                </div>
+
+                <div class="info-box">
+                  <h3 style="margin-top: 0; color: #0ea5e9;">📅 Session Details</h3>
+                  <div class="info-row">
+                    <span class="label">Date:</span>
+                    <span class="value">${bookingDate}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Time:</span>
+                    <span class="value">${bookingTime}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Duration:</span>
+                    <span class="value">${duration}</span>
+                  </div>
+                  ${sessionNotes ? `
+                  <div class="info-row">
+                    <span class="label">Notes:</span>
+                    <span class="value">${sessionNotes}</span>
+                  </div>
+                  ` : ''}
+                </div>
+
+                <div class="footer">
+                  <p style="margin: 5px 0;">🔔 This is an automated notification from Elevait</p>
+                  <p style="margin: 5px 0;">© ${new Date().getFullYear()} Elevait. All rights reserved.</p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+    });
+
+    console.log('✅ Admin booking notification sent:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Failed to send admin booking notification:', error);
+    return null;
+  }
+}

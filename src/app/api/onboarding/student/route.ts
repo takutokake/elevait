@@ -39,14 +39,9 @@ export async function POST(request: NextRequest) {
     const alumniSchool = sanitizeText(validatedData.alumniSchool, 200)
     const track = sanitizeText(validatedData.track, 100)
     const pmFocusAreas = sanitizeStringArray(validatedData.pmFocusAreas)
-    const priceRangeMinDollars = validatedData.priceRangeMinDollars
-    const priceRangeMaxDollars = validatedData.priceRangeMaxDollars
+    const sessionTypes = sanitizeStringArray(validatedData.sessionTypes)
     const avatarUrl = sanitizeUrl(validatedData.avatarUrl)
     const referredBy = sanitizeText(validatedData.referredBy, 200)
-
-    // Convert price range from dollars to cents
-    const priceRangeMinCents = Math.round(priceRangeMinDollars * 100)
-    const priceRangeMaxCents = Math.round(priceRangeMaxDollars * 100)
 
     const supabase = await getSupabaseServerClient()
 
@@ -70,8 +65,7 @@ export async function POST(request: NextRequest) {
         alumni_school: alumniSchool || null,
         track,
         pm_focus_areas: pmFocusAreas,
-        price_range_min_cents: priceRangeMinCents,
-        price_range_max_cents: priceRangeMaxCents,
+        session_types: sessionTypes,
         referred_by: finalReferredBy
       })
 

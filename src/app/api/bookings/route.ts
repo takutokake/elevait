@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
 import { isValidBookingDuration, isPastDate, validateLeadTime } from '@/lib/dateUtils'
-import { sendBookingRequestEmails } from '@/lib/emailService'
+import { sendBookingRequestEmails, sendAdminBookingNotification, sendSlackBookingNotification } from '@/lib/emailService'
 import { checkRateLimit, bookingRateLimiter, readRateLimiter } from '@/lib/rateLimit'
 import { createBookingSchema, updateBookingSchema } from '@/lib/validationSchemas'
 import { sanitizeEmail, sanitizePhone, sanitizeText, sanitizeUuid } from '@/lib/sanitization'
@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
         admin: 'tryelevait@gmail.com'
       })
       
-      await sendBookingRequestEmails({
+      const emailData = {
         studentName: learnerProfile?.full_name || 'Student',
         studentEmail: booking.learner_email,
         coachName: mentorProfile?.full_name || 'Coach',
@@ -341,7 +341,11 @@ export async function POST(request: NextRequest) {
         }),
         duration: `${durationMinutes} minutes`,
         sessionNotes: booking.session_notes || undefined
-      })
+      }
+      
+      await sendBookingRequestEmails(emailData)
+      await sendAdminBookingNotification(emailData)
+      await sendSlackBookingNotification(emailData)
     } catch (emailError) {
       console.error('Failed to send booking emails:', emailError)
       // Don't fail the booking if emails fail
