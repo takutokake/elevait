@@ -24,7 +24,7 @@ export default async function Home() {
     {
       quote: "The coaching sessions were incredibly helpful in preparing me for the Capital One interview process. My coach provided detailed insights and practice that made all the difference.",
       name: "Anonymous",
-      role: "Product Manager @ Capital One",
+      role: "PDP @ Capital One",
       hiredDate: "October 2025"
     },
     {
@@ -36,7 +36,7 @@ export default async function Home() {
     {
       quote: "The personalized coaching and real-world interview experience shared by my coach helped me navigate the Amazon interview process successfully.",
       name: "Anonymous",
-      role: "Product Management Intern @ Amazon",
+      role: "Program Management Intern @ Amazon",
       hiredDate: "December 2025"
     }
   ];
