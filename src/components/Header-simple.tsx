@@ -127,12 +127,12 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
   // Landing page header
   return (
     <header className="sticky top-0 z-50 flex items-center justify-center whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
-      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
-        <div className="flex items-center">
+      <div className={`flex items-center w-full max-w-7xl mx-auto ${currentUser ? 'justify-between' : ''}`}>
+        <div className={`flex items-center ${!currentUser ? 'w-[180px]' : ''}`}>
           <Logo size="lg" href="/" />
         </div>
         
-        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center ml-[-60px]">
+        <nav className="hidden lg:flex items-center gap-8 justify-center flex-1">
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
             Coaches
           </Link>
@@ -144,18 +144,18 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
           </Link>
         </nav>
         
-        <div className="hidden lg:flex gap-2">
+        <div className={`hidden lg:flex gap-2 ${!currentUser ? 'w-[180px] justify-end' : ''}`}>
           {isLoading ? (
             <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
           ) : currentUser ? (
             <UserAvatar />
           ) : (
             <>
-              <Link href="/login" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10">
-                <span className="truncate">Log In</span>
+              <Link href="/login" className="flex min-w-[88px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] transition-colors text-[#0ea5e9] hover:bg-[#0ea5e9]/10 whitespace-nowrap">
+                <span>Log In</span>
               </Link>
-              <Link href="/signup" className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90">
-                <span className="truncate">Get Started</span>
+              <Link href="/signup" className="flex min-w-[116px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#0ea5e9] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-opacity hover:opacity-90 whitespace-nowrap">
+                <span>Get Started</span>
               </Link>
             </>
           )}

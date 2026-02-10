@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Layout from "../../components/Layout";
 import CoachCard from "@/components/CoachCard";
 import { MentorWithDetails } from "@/types/mentor";
@@ -12,7 +13,9 @@ export default function CoachesPage() {
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const searchParams = useSearchParams()
+  const companyParam = searchParams.get('company')
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>(companyParam ? [companyParam] : [])
   const [companySearchQuery, setCompanySearchQuery] = useState('')
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'this_week' | 'next_week'>('all')
   const [mentorAvailability, setMentorAvailability] = useState<Record<string, boolean>>({})
