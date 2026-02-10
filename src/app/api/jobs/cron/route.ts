@@ -25,8 +25,18 @@ export async function GET(request: NextRequest) {
 
     // In development, allow unauthenticated calls
     const isDev = process.env.NODE_ENV === 'development'
+    
+    // Also allow if it's a vercel-cron user agent (fallback if CRON_SECRET not set)
+    const userAgent = request.headers.get('user-agent') || ''
+    const isVercelCronUserAgent = userAgent.includes('vercel-cron')
 
-    if (!isVercelCron && !isManualSync && !isDev) {
+    if (!isVercelCron && !isManualSync && !isDev && !isVercelCronUserAgent) {
+      console.error('[Jobs Cron] Unauthorized request', { 
+        hasAuthHeader: !!authHeader, 
+        hasCronSecret: !!cronSecret,
+        hasSyncSecret: !!syncSecret,
+        userAgent 
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
