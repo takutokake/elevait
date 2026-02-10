@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Bookmark } from 'lucide-react'
+import posthog from 'posthog-js'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { toast } from 'react-toastify'
 
@@ -68,12 +69,21 @@ export default function BookmarkButton({ mentorId, size = 'md', variant = 'card'
 
       if (response.ok) {
         setIsSaved(!isSaved)
+
+        // Capture mentor save/unsave event
+        if (isSaved) {
+          posthog.capture('mentor_unsaved', { mentor_id: mentorId })
+        } else {
+          posthog.capture('mentor_saved', { mentor_id: mentorId })
+        }
+
         toast.success(isSaved ? 'Mentor removed from saved' : 'Mentor saved!')
       } else {
         toast.error('Failed to save mentor')
       }
     } catch (error) {
       console.error('Error toggling save:', error)
+      posthog.captureException(error)
       toast.error('An error occurred')
     } finally {
       setLoading(false)

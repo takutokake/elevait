@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseServerClient } from '@/lib/supabaseServer'
+import { getPostHogClient } from '@/lib/posthog-server'
 import { sendBookingRequestEmails, sendAdminBookingNotification, sendSlackBookingNotification } from '@/lib/emailService'
 
 function getStripe() {
@@ -198,6 +199,20 @@ export async function POST(request: NextRequest) {
           hasLearnerProfile: !!learnerProfile
         })
       }
+
+      // Capture payment completed event (server-side)
+      const posthog = getPostHogClient()
+      posthog.capture({
+        distinctId: userId,
+        event: 'payment_completed',
+        properties: {
+          booking_id: bookingId,
+          mentor_id: mentorId,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          stripe_session_id: session.id,
+        },
+      })
 
       console.log('✅ Booking created successfully after payment:', bookingId)
     }

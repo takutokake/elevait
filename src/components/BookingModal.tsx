@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import posthog from 'posthog-js'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -301,6 +302,14 @@ export default function BookingModal({
         if (response.ok) {
           const data = await response.json()
           console.log('Free booking success:', data)
+
+          // Capture free booking confirmed event
+          posthog.capture('booking_confirmed_free', {
+            coach_id: coachId,
+            duration: selectedDuration,
+            booking_id: data.bookingId,
+          })
+
           toast.success('🎉 Booking confirmed! Check your email for details.')
           onBookingComplete()
           onClose()
@@ -329,6 +338,14 @@ export default function BookingModal({
 
         if (response.ok) {
           const { url } = await response.json()
+
+          // Capture payment initiated event
+          posthog.capture('booking_payment_initiated', {
+            coach_id: coachId,
+            duration: selectedDuration,
+            total_cost: totalCost,
+          })
+
           // Redirect to Stripe checkout
           window.location.href = url
         } else {
@@ -338,6 +355,7 @@ export default function BookingModal({
       }
     } catch (error) {
       console.error('Booking error:', error)
+      posthog.captureException(error)
       toast.error('An error occurred while processing your booking')
     } finally {
       setSubmitting(false)
@@ -396,6 +414,12 @@ export default function BookingModal({
                   onClick={() => {
                     setSelectedSessionType('free')
                     setSelectedDuration(freeDuration)
+                    // Capture session type selection event
+                    posthog.capture('booking_session_type_selected', {
+                      coach_id: coachId,
+                      session_type: 'free',
+                      duration: freeDuration,
+                    })
                     setStep('date')
                   }}
                   className="p-6 border-2 border-green-200 dark:border-green-800 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all text-left"
@@ -413,6 +437,13 @@ export default function BookingModal({
                   onClick={() => {
                     setSelectedSessionType('paid')
                     setSelectedDuration(paidDuration)
+                    // Capture session type selection event
+                    posthog.capture('booking_session_type_selected', {
+                      coach_id: coachId,
+                      session_type: 'paid',
+                      duration: paidDuration,
+                      price: paidPrice,
+                    })
                     setStep('date')
                   }}
                   className="p-6 border-2 border-orange-200 dark:border-orange-800 rounded-xl hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-left"

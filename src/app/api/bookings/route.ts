@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { getPostHogClient } from '@/lib/posthog-server'
 import { isValidBookingDuration, isPastDate, validateLeadTime } from '@/lib/dateUtils'
 import { sendBookingRequestEmails, sendAdminBookingNotification, sendSlackBookingNotification } from '@/lib/emailService'
 import { checkRateLimit, bookingRateLimiter, readRateLimiter } from '@/lib/rateLimit'
@@ -349,6 +350,20 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Failed to send booking emails:', emailError)
       // Don't fail the booking if emails fail
+    }
+
+    // Capture free booking created event (server-side) if this was a free session
+    if (isFreeSession) {
+      const posthog = getPostHogClient()
+      posthog.capture({
+        distinctId: user.id,
+        event: 'free_booking_created',
+        properties: {
+          booking_id: data,
+          mentor_id: booking.mentor_id,
+          duration_minutes: Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60)),
+        },
+      })
     }
 
     return NextResponse.json({ booking, bookingId: data })

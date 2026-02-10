@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import posthog from 'posthog-js'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
@@ -43,15 +44,28 @@ function LoginForm() {
 
       console.log('[Login] Sign in successful, user:', data.user?.id)
 
+      // Identify user in PostHog
+      if (data.user) {
+        posthog.identify(data.user.id, {
+          email: formData.email,
+        })
+
+        // Capture login event
+        posthog.capture('user_logged_in', {
+          login_method: 'email',
+        })
+      }
+
       // Always go through callback, pass returnUrl if present
-      const callbackUrl = returnUrl 
+      const callbackUrl = returnUrl
         ? `/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
         : '/auth/callback'
-      
+
       console.log('[Login] Redirecting to:', callbackUrl)
       router.replace(callbackUrl)
     } catch (err) {
       console.error('[Login] Unexpected error:', err)
+      posthog.captureException(err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -70,6 +84,11 @@ function LoginForm() {
         ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
         : `${window.location.origin}/auth/callback`
       
+      // Capture Google login attempt
+      posthog.capture('user_logged_in', {
+        login_method: 'google',
+      })
+
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -77,6 +96,7 @@ function LoginForm() {
         },
       })
     } catch (err) {
+      posthog.captureException(err)
       setError('An unexpected error occurred')
       setGoogleLoading(false)
     }

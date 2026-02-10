@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { getPostHogClient } from '@/lib/posthog-server'
 import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
 import { createRateLimitResponse, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
 
@@ -49,6 +50,17 @@ export async function POST(
         { status: 400 }
       )
     }
+
+    // Capture booking approved event (server-side)
+    const posthog = getPostHogClient()
+    posthog.capture({
+      distinctId: user.id,
+      event: 'booking_approved',
+      properties: {
+        booking_id: bookingId,
+        mentor_id: user.id,
+      },
+    })
 
     return NextResponse.json({
       success: true,

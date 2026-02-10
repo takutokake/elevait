@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import posthog from 'posthog-js'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
@@ -78,6 +79,22 @@ export default function SignUpPage() {
         }
       }
 
+      // Identify user in PostHog
+      if (data.user) {
+        posthog.identify(data.user.id, {
+          email: formData.email,
+          name: formData.fullName,
+          role: roleChoice === 'coach' ? 'mentor' : 'student',
+        })
+
+        // Capture signup event
+        posthog.capture('user_signed_up', {
+          signup_method: 'email',
+          role: roleChoice === 'coach' ? 'mentor' : 'student',
+          has_referral: !!formData.referredBy,
+        })
+      }
+
       // Redirect based on role choice
       if (roleChoice === 'student') {
         router.push('/onboarding/student')
@@ -86,6 +103,7 @@ export default function SignUpPage() {
       }
     } catch (err) {
       console.error('Unexpected signup error:', err)
+      posthog.captureException(err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -107,7 +125,13 @@ export default function SignUpPage() {
       
       // Store role choice in localStorage to retrieve after OAuth redirect
       localStorage.setItem('signup_role_choice', roleChoice === 'coach' ? 'mentor' : 'student')
-      
+
+      // Capture Google signup attempt
+      posthog.capture('user_signed_up', {
+        signup_method: 'google',
+        role: roleChoice === 'coach' ? 'mentor' : 'student',
+      })
+
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -115,6 +139,7 @@ export default function SignUpPage() {
         },
       })
     } catch (err) {
+      posthog.captureException(err)
       setError('An unexpected error occurred')
       setGoogleLoading(false)
     }

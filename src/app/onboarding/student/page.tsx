@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import posthog from 'posthog-js'
 import { uploadAvatar } from '@/lib/avatarUpload'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -139,9 +140,19 @@ export default function StudentOnboardingPage() {
         throw new Error(errorData.error || 'Failed to complete onboarding')
       }
 
+      // Capture student onboarding completed event
+      posthog.capture('student_onboarding_completed', {
+        track: formData.track,
+        pm_focus_areas: formData.pmFocusAreas,
+        session_types: formData.sessionTypes,
+        has_referral: !!formData.referredBy,
+        has_avatar: !!avatarFile,
+      })
+
       // Success - redirect to dashboard or home
       router.push('/')
     } catch (err) {
+      posthog.captureException(err)
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setSubmitting(false)

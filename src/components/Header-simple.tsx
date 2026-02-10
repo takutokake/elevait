@@ -114,7 +114,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
 
   if (variant === "dashboard" || variant === "admin") {
     return (
-      <header className="sticky top-0 z-50 flex items-center justify-between h-14 px-6 bg-[#FFFFFF]/95 dark:bg-[#1E293B]/95 border-b border-solid border-[#E2E8F0] dark:border-[#334155] backdrop-blur-sm w-full">
+      <header className="sticky top-0 z-50 flex items-center justify-between h-14 px-4 sm:px-6 bg-[#FFFFFF]/95 dark:bg-[#1E293B]/95 border-b border-solid border-[#E2E8F0] dark:border-[#334155] backdrop-blur-sm w-full">
         <Logo size="lg" href="/" />
         
         <div className="flex items-center gap-4">
@@ -126,9 +126,9 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
 
   // Landing page header
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-center whitespace-nowrap border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
-      <div className={`flex items-center w-full max-w-7xl mx-auto ${currentUser ? 'justify-between' : ''}`}>
-        <div className={`flex items-center ${!currentUser ? 'w-[180px]' : ''}`}>
+    <header className="sticky top-0 z-50 border-b border-solid border-[#E2E8F0] dark:border-[#374151] px-4 sm:px-6 py-2 bg-[#ffffff]/95 dark:bg-[#1F2937]/95 backdrop-blur-sm">
+      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+        <div className={`flex items-center flex-shrink-0 ${!currentUser ? 'lg:w-[180px]' : ''}`}>
           <Logo size="lg" href="/" />
         </div>
         
@@ -144,7 +144,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
           </Link>
         </nav>
         
-        <div className={`hidden lg:flex gap-2 ${!currentUser ? 'w-[180px] justify-end' : ''}`}>
+        <div className={`hidden lg:flex gap-2 flex-shrink-0 ${!currentUser ? 'w-[180px] justify-end' : ''}`}>
           {isLoading ? (
             <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
           ) : currentUser ? (
@@ -175,7 +175,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
       
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 mx-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg lg:hidden">
+        <div className="fixed top-[57px] left-0 right-0 mx-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg lg:hidden z-50">
           <nav className="flex flex-col p-4 gap-2">
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/coaches">
               Coaches

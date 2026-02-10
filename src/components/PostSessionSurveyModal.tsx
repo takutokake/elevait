@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import posthog from 'posthog-js'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'react-toastify'
@@ -56,6 +57,13 @@ export default function PostSessionSurveyModal({
       })
 
       if (response.ok) {
+        // Capture survey submitted event
+        posthog.capture('post_session_survey_submitted', {
+          booking_id: bookingId,
+          rating: rating,
+          mentor_attended: attended,
+        })
+
         toast.success('Survey submitted successfully!')
         onSuccess()
         onClose()
@@ -65,6 +73,7 @@ export default function PostSessionSurveyModal({
       }
     } catch (error) {
       console.error('Survey submission error:', error)
+      posthog.captureException(error)
       toast.error('An error occurred while submitting the survey')
     } finally {
       setSubmitting(false)

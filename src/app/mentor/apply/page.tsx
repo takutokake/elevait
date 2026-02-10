@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import posthog from 'posthog-js'
 import { uploadAvatar } from '@/lib/avatarUpload'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -346,10 +347,23 @@ export default function CoachApplicationPage() {
         throw new Error(errorData.error || 'Failed to submit application')
       }
 
+      // Capture coach application submitted event
+      posthog.capture('coach_application_submitted', {
+        current_company: formData.currentCompany,
+        years_experience: formData.yearsExperience,
+        pricing_model: formData.pricingModel,
+        session_price: formData.sessionPrice,
+        specializations: formData.specializations,
+        session_types: formData.sessionTypes,
+        offers_referrals: formData.offersReferrals,
+        has_avatar: !!avatarFile,
+      })
+
       // Success - set both success and pending application state
       setSuccess(true)
       setHasPendingApplication(true)
     } catch (err) {
+      posthog.captureException(err)
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setSubmitting(false)

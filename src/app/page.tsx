@@ -68,7 +68,7 @@ export default async function Home() {
   return (
     <Layout variant="landing">
       {/* Hero Section - Redesigned */}
-      <div className="relative isolate overflow-hidden min-h-screen flex items-center pt-24 pb-20 sm:pt-32 sm:pb-28">
+      <div className="relative isolate overflow-hidden min-h-[85vh] sm:min-h-screen flex items-center pt-20 pb-16 sm:pt-32 sm:pb-28">
 
         {/* Background Elements */}
         <div className="absolute inset-0 -z-10 h-full w-full bg-white dark:bg-[#101c22]">
@@ -77,11 +77,11 @@ export default async function Home() {
         
         {/* Gradient Orbs */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-30 bg-[radial-gradient(circle,rgba(139,92,246,0.25)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
-          <div className="absolute top-[20%] right-0 translate-x-1/3 w-[600px] h-[600px] opacity-20 bg-[radial-gradient(circle,rgba(14,165,233,0.3)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] opacity-30 bg-[radial-gradient(circle,rgba(139,92,246,0.25)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
+          <div className="absolute top-[20%] right-0 translate-x-1/3 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] opacity-20 bg-[radial-gradient(circle,rgba(14,165,233,0.3)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
         </div>
 
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center relative">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center relative">
           <div className="mx-auto max-w-4xl flex flex-col items-center">
 
             {/* Free Badge */}
@@ -90,19 +90,19 @@ export default async function Home() {
               <span>Talk to coaches for free</span>
             </div>
 
-            <h1 className="text-5xl font-extrabold tracking-tight text-[#333333] dark:text-white sm:text-7xl mb-6 drop-shadow-sm">
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#333333] dark:text-white lg:text-7xl mb-4 sm:mb-6 drop-shadow-sm">
               Learn from People Who <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0ea5e9] to-[#8b5cf6]">Just Went Through It</span>
             </h1>
             
-            <p className="text-xl leading-8 text-[#333333]/70 dark:text-[#F5F5F5]/70 max-w-2xl mb-10">
+            <p className="text-base sm:text-xl leading-7 sm:leading-8 text-[#333333]/70 dark:text-[#F5F5F5]/70 max-w-2xl mb-8 sm:mb-10">
               Free peer coaching from recent PM hires at top tech companies. Get real interview prep from coaches who remember every detail—because they just lived it.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-12">
-              <Link href="/coaches" className="w-full sm:w-auto px-8 py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto mb-10 sm:mb-12">
+              <Link href="/coaches" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm sm:text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 transform hover:-translate-y-0.5 text-center">
                 Find a Peer Coach
               </Link>
-              <Link href="/mentor/apply" className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300 flex items-center justify-center gap-2 group">
+              <Link href="/mentor/apply" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] text-sm sm:text-base font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300 flex items-center justify-center gap-2 group">
                 Become a Coach
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </Link>
@@ -113,7 +113,7 @@ export default async function Home() {
               <p className="text-sm font-medium text-[#333333]/60 dark:text-[#F5F5F5]/60 mb-4">
                 Our coaches recently interviewed at:
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 opacity-70">
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-10 opacity-70">
                 {companyLogos.map((company) => (
                   <div key={company.name} className="h-8 flex items-center grayscale hover:grayscale-0 transition-all">
                     <span className="text-lg font-bold text-[#333333]/50 dark:text-[#F5F5F5]/50">{company.name}</span>
@@ -129,14 +129,14 @@ export default async function Home() {
       </div>
 
       {/* Why Peer Coaching Works Better - Value Proposition Section */}
-      <div className="py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-[#333333] dark:text-white sm:text-4xl">Why Peer Coaching Works Better</h2>
+      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Why Peer Coaching Works Better</h2>
           </div>
           
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="relative flex flex-col items-center text-center p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 md:grid-cols-3">
+            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
                 🎯
               </div>
@@ -146,7 +146,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="relative flex flex-col items-center text-center p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400">
                 💰
               </div>
@@ -156,7 +156,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="relative flex flex-col items-center text-center p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
               <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
                 🤝
               </div>
@@ -170,16 +170,16 @@ export default async function Home() {
       </div>
 
       {/* How It Works Section - Detailed Journey */}
-      <div className="py-24 bg-white dark:bg-[#101c22]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="text-center mb-16">
+      <div className="py-16 sm:py-24 bg-white dark:bg-[#101c22]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-16">
             <h2 className="text-sm font-bold uppercase tracking-wider text-[#0ea5e9] mb-2">How It Works</h2>
-            <p className="text-3xl font-bold tracking-tight text-[#333333] dark:text-white sm:text-4xl">Your Path to PM Interviews</p>
+            <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Your Path to PM Interviews</p>
           </div>
           
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-3">
             {/* Step 1 */}
-            <div className="relative flex flex-col p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
+            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
               <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">1</div>
               <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
                 🔍
@@ -207,7 +207,7 @@ export default async function Home() {
             </div>
 
             {/* Step 2 */}
-            <div className="relative flex flex-col p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
+            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
               <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">2</div>
               <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
                 📅
@@ -234,7 +234,7 @@ export default async function Home() {
             </div>
 
             {/* Step 3 */}
-            <div className="relative flex flex-col p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
+            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
               <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">3</div>
               <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
                 🚀
@@ -264,12 +264,12 @@ export default async function Home() {
       </div>
 
       {/* Meet Our Coaches Section */}
-      <div className="py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-4 sm:gap-6">
             <div className="max-w-2xl">
               <h2 className="text-sm font-bold uppercase tracking-wider text-[#f97316] mb-2">Meet Our Coaches</h2>
-              <p className="text-3xl font-bold tracking-tight text-[#333333] dark:text-white sm:text-4xl">Recent PM Hires Ready to Help</p>
+              <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Recent PM Hires Ready to Help</p>
               <p className="mt-4 text-lg text-[#333333]/70 dark:text-[#F5F5F5]/70">Coaches who just went through what you're preparing for.</p>
             </div>
             <Link href="/coaches" className="hidden md:flex items-center gap-2 text-[#0ea5e9] font-bold hover:text-[#0284c7] transition-colors">
@@ -278,7 +278,7 @@ export default async function Home() {
           </div>
 
           {featuredMentors.length > 0 ? (
-            <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+            <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
               {featuredMentors.map((mentor) => {
                 const mentorData = mentor.mentor_data;
                 const displayName = mentor.full_name || 'Anonymous Coach';
@@ -296,7 +296,7 @@ export default async function Home() {
                   <Link 
                     key={mentor.id} 
                     href={`/coaches/${mentor.id}`}
-                    className="group flex-shrink-0 w-72 snap-start flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300"
+                    className="group flex-shrink-0 w-[260px] sm:w-72 snap-start flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300"
                   >
                     <div className="p-6 flex flex-col h-full">
                       <div className="flex items-start gap-4 mb-4">
@@ -365,17 +365,17 @@ export default async function Home() {
       </div>
 
       {/* Social Proof / Testimonials Section */}
-      <div className="py-24 bg-white dark:bg-[#101c22]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-[#333333] dark:text-white sm:text-4xl">Join 500+ PMs Who Got Coached (and Hired)</h2>
+      <div className="py-16 sm:py-24 bg-white dark:bg-[#101c22]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Join 500+ PMs Who Got Coached (and Hired)</h2>
           </div>
           
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8 md:grid-cols-3">
             {testimonials.map((testimonial, idx) => (
-              <div key={idx} className="flex flex-col p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
+              <div key={idx} className="flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
                 <div className="flex-1">
-                  <p className="text-lg text-[#333333]/80 dark:text-[#F5F5F5]/80 italic leading-relaxed">
+                  <p className="text-base sm:text-lg text-[#333333]/80 dark:text-[#F5F5F5]/80 italic leading-relaxed">
                     "{testimonial.quote}"
                   </p>
                 </div>
@@ -391,22 +391,22 @@ export default async function Home() {
       </div>
 
       {/* FAQ Section */}
-      <div className="py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-4xl px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-[#333333] dark:text-white sm:text-4xl">Common Questions</h2>
+      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Common Questions</h2>
           </div>
           
           <div className="space-y-4">
             {faqItems.map((item, idx) => (
               <details key={idx} className="group bg-white dark:bg-[#16242c] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                  <h3 className="text-lg font-semibold text-[#333333] dark:text-white pr-4">{item.question}</h3>
+                <summary className="flex items-center justify-between p-4 sm:p-6 cursor-pointer list-none">
+                  <h3 className="text-base sm:text-lg font-semibold text-[#333333] dark:text-white pr-4">{item.question}</h3>
                   <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-[#333333] dark:text-white group-open:rotate-180 transition-transform">
                     ↓
                   </span>
                 </summary>
-                <div className="px-6 pb-6">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                   <p className="text-[#333333]/70 dark:text-[#F5F5F5]/70 leading-relaxed">{item.answer}</p>
                 </div>
               </details>
@@ -415,11 +415,11 @@ export default async function Home() {
 
           <div className="mt-12 text-center">
             <p className="text-[#333333]/70 dark:text-[#F5F5F5]/70 mb-4">Ready to get started?</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/coaches" className="px-8 py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <Link href="/coaches" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm sm:text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 text-center">
                 Find a Peer Coach
               </Link>
-              <Link href="/mentor/apply" className="px-8 py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300">
+              <Link href="/mentor/apply" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] text-sm sm:text-base font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300 text-center">
                 Become a Coach
               </Link>
             </div>

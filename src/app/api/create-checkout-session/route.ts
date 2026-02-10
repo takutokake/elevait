@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { getPostHogClient } from '@/lib/posthog-server'
 import { checkRateLimit, paymentRateLimiter } from '@/lib/rateLimit'
 import { createCheckoutSessionSchema } from '@/lib/validationSchemas'
 import { sanitizeEmail, sanitizePhone, sanitizeText, sanitizeUuid } from '@/lib/sanitization'
@@ -132,6 +133,19 @@ export async function POST(request: NextRequest) {
         learnerEmail: learnerEmail || user.email || '',
         learnerPhone: learnerPhone || '',
         sessionNotes: sessionNotes || '',
+      },
+    })
+
+    // Capture checkout session created event (server-side)
+    const posthog = getPostHogClient()
+    posthog.capture({
+      distinctId: user.id,
+      event: 'checkout_session_created',
+      properties: {
+        mentor_id: mentorId,
+        duration_hours: durationHours,
+        total_price_cents: totalPriceCents,
+        stripe_session_id: session.id,
       },
     })
 
