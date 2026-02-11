@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Elevait | Personalized PM Coaching & Job Board",
   description: "Connect with elite product management coaches and accelerate your career. Personalized coaching for students and new grads pursuing PM roles.",
   openGraph: {
-    title: "Elevait - Personalized PM Coaching",
+    title: "Elevait | Personalized PM Coaching & Job Board",
     description: "Connect with elite product management coaches and accelerate your career.",
     images: ["/images/Elevait_logo.png"],
     siteName: "Elevait",
