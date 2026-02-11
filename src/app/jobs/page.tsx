@@ -323,7 +323,7 @@ export default function JobsPage() {
                         : coachCompaniesOnPage.length <= 3
                           ? coachCompaniesOnPage.map(c => c.company).join(', ')
                           : `${coachCompaniesOnPage.slice(0, 2).map(c => c.company).join(', ')} + ${coachCompaniesOnPage.length - 2} more`
-                      }
+                      } + More [Filter by Has Coach]
                     </p>
                     <p className="text-xs text-violet-700/70 dark:text-violet-400/70 mt-0.5">
                       Get help with mock interviews, resume reviews, and application strategy from people who&apos;ve been through the process.

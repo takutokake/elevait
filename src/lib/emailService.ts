@@ -572,3 +572,113 @@ export async function sendAdminBookingNotification(data: BookingEmailData) {
     return null;
   }
 }
+
+/**
+ * Send Slack notification when a new coach application is submitted
+ */
+export async function sendSlackCoachApplicationNotification(data: {
+  applicantName: string
+  applicantEmail: string
+  currentTitle: string
+  currentCompany: string
+  yearsExperience: number
+  focusAreas: string[]
+  linkedinUrl: string
+  alumniSchool?: string
+  pricingModel: string
+}) {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL
+
+  if (!webhookUrl) {
+    console.warn('SLACK_WEBHOOK_URL not configured - skipping Slack notification')
+    return null
+  }
+
+  const {
+    applicantName,
+    applicantEmail,
+    currentTitle,
+    currentCompany,
+    yearsExperience,
+    focusAreas,
+    linkedinUrl,
+    alumniSchool,
+    pricingModel,
+  } = data
+
+  const message = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "📋 New Coach Application!",
+          emoji: true
+        }
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Applicant:*\n${applicantName}\n${applicantEmail}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Current Role:*\n${currentTitle} at ${currentCompany}`
+          }
+        ]
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Experience:*\n${yearsExperience} year${yearsExperience !== 1 ? 's' : ''}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Pricing Model:*\n${pricingModel}`
+          }
+        ]
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Focus Areas:*\n${focusAreas.length > 0 ? focusAreas.join(', ') : 'None specified'}${alumniSchool ? `\n*Alumni:* ${alumniSchool}` : ''}${linkedinUrl ? `\n*LinkedIn:* <${linkedinUrl}|View Profile>` : ''}`
+        }
+      },
+      {
+        type: "divider"
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: "📋 Coach application submitted via Elevait — review in the admin dashboard"
+          }
+        ]
+      }
+    ]
+  }
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    })
+
+    if (!response.ok) {
+      throw new Error(`Slack API error: ${response.status}`)
+    }
+
+    console.log('✅ Slack coach application notification sent')
+    return true
+  } catch (error) {
+    console.error('❌ Failed to send Slack coach application notification:', error)
+    return null
+  }
+}

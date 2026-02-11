@@ -4,6 +4,7 @@ import { checkRateLimit, standardRateLimiter } from '@/lib/rateLimit'
 import { coachApplicationSchema } from '@/lib/validationSchemas'
 import { sanitizeText, sanitizeTextNoEncode, sanitizeUrl, sanitizeStringArray, sanitizeStringArrayNoEncode } from '@/lib/sanitization'
 import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { sendSlackCoachApplicationNotification } from '@/lib/emailService'
 import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
@@ -131,6 +132,30 @@ export async function POST(request: NextRequest) {
         { error: sanitizeDatabaseError(profileError) },
         { status: 500 }
       )
+    }
+
+    // Send Slack notification (don't block on failure)
+    try {
+      // Fetch applicant name from profiles
+      const { data: applicantProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
+
+      await sendSlackCoachApplicationNotification({
+        applicantName: applicantProfile?.full_name || 'Unknown',
+        applicantEmail: user.email || '',
+        currentTitle,
+        currentCompany,
+        yearsExperience,
+        focusAreas,
+        linkedinUrl: linkedinUrl || '',
+        alumniSchool,
+        pricingModel,
+      })
+    } catch (slackError) {
+      console.error('Failed to send Slack coach application notification:', slackError)
     }
 
     return NextResponse.json({ success: true })
