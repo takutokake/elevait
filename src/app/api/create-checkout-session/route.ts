@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
     const learnerEmail = sanitizeEmail(validatedData.learnerEmail || user.email || '')
     const learnerPhone = sanitizePhone(validatedData.learnerPhone)
     const sessionNotes = sanitizeText(validatedData.sessionNotes, 1000)
+    const userTimezone = validatedData.timezone || 'UTC'
 
     if (!mentorId) {
       return NextResponse.json(
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
         learnerEmail: learnerEmail || user.email || '',
         learnerPhone: learnerPhone || '',
         sessionNotes: sessionNotes || '',
+        timezone: userTimezone,
       },
     })
 

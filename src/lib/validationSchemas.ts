@@ -156,6 +156,7 @@ export const createCheckoutSessionSchema = z.object({
   learnerEmail: emailSchema.optional(),
   learnerPhone: phoneSchema.nullable().optional(),
   sessionNotes: z.string().max(1000).trim().optional(),
+  timezone: z.string().max(100).optional(),
 }).strict()
 
 // Survey submission validation

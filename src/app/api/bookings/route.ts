@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     const learnerEmail = sanitizeEmail(body.learnerEmail || user.email || '')
     const learnerPhone = sanitizePhone(body.learnerPhone)
     const sessionNotes = sanitizeText(body.sessionNotes, 1000)
+    const userTimezone = body.timezone || 'UTC'
 
     // Validate required fields
     if (!bookingStartTime || !bookingEndTime) {
@@ -190,7 +191,7 @@ export async function POST(request: NextRequest) {
         learner_phone: learnerPhone || null,
         session_notes: sessionNotes || null,
         status: 'confirmed',
-        timezone: 'UTC',
+        timezone: userTimezone,
       }
 
       const { data: newBooking, error: insertError } = await supabase
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
         p_learner_email: learnerEmail || user.email || '',
         p_learner_phone: learnerPhone || null,
         p_session_notes: sessionNotes || null,
-        p_timezone: 'UTC'
+        p_timezone: userTimezone
       })
       
       data = result.data
@@ -314,9 +315,7 @@ export async function POST(request: NextRequest) {
 
     // Send email notifications (don't block on this)
     try {
-      const bookingStart = new Date(booking.booking_start_time)
-      const bookingEnd = new Date(booking.booking_end_time)
-      const durationMinutes = Math.round((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60))
+      const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60))
       
       console.log('[Booking] Sending emails to:', {
         student: booking.learner_email,
@@ -329,16 +328,18 @@ export async function POST(request: NextRequest) {
         studentEmail: booking.learner_email,
         coachName: mentorProfile?.full_name || 'Coach',
         coachEmail: mentorProfile?.email || '',
-        bookingDate: bookingStart.toLocaleDateString('en-US', { 
+        bookingDate: startTime.toLocaleDateString('en-US', { 
           weekday: 'long', 
           month: 'long', 
           day: 'numeric',
-          year: 'numeric'
+          year: 'numeric',
+          timeZone: userTimezone
         }),
-        bookingTime: bookingStart.toLocaleTimeString('en-US', { 
+        bookingTime: startTime.toLocaleTimeString('en-US', { 
           hour: 'numeric', 
           minute: '2-digit',
-          hour12: true 
+          hour12: true,
+          timeZone: userTimezone
         }),
         duration: `${durationMinutes} minutes`,
         sessionNotes: booking.session_notes || undefined

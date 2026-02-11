@@ -296,6 +296,7 @@ export default function BookingModal({
             learnerPhone: formData.phone,
             sessionNotes: formData.notes,
             isFreeSession: true,
+            timezone: getUserTimezone(),
           }),
         })
 
@@ -333,6 +334,7 @@ export default function BookingModal({
             learnerEmail: formData.email,
             learnerPhone: formData.phone,
             sessionNotes: formData.notes,
+            timezone: getUserTimezone(),
           }),
         })
 

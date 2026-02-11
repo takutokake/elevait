@@ -98,10 +98,10 @@ export default async function CoachProfile({ params }: CoachProfileProps) {
                     )}
                     <div className="flex-1">
                       <div className="flex flex-col gap-3">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC]">{mentor.full_name || "Anonymous Coach"}</h1>
-                            <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] dark:text-[#F8FAFC] break-words">{mentor.full_name || "Anonymous Coach"}</h1>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
                               {mentor.mentor_data?.current_title && (
                                 <span className="text-lg text-[#0ea5e9] font-semibold">{mentor.mentor_data.current_title}</span>
                               )}

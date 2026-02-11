@@ -74,9 +74,9 @@ export default function CoachBookingSection({
   const fetchAvailability = async () => {
     setLoading(true)
     try {
-      // Fetch availability for next 30 days
+      // Fetch availability for next 2 weeks
       const now = new Date()
-      const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const futureDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
 
       const response = await fetch(
         `/api/coaches/${coachId}/availability?from=${now.toISOString()}&to=${futureDate.toISOString()}`
@@ -114,9 +114,9 @@ export default function CoachBookingSection({
     // If authenticated, proceed with booking flow
     setLoading(true)
     try {
-      // Fetch availability for next 30 days
+      // Fetch availability for next 2 weeks
       const now = new Date()
-      const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const futureDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
 
       const response = await fetch(
         `/api/coaches/${coachId}/availability?from=${now.toISOString()}&to=${futureDate.toISOString()}`

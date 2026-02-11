@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
       learnerEmail,
       learnerPhone,
       sessionNotes,
-    } = metadata
+      timezone: userTimezone,
+    } = metadata as any
 
     console.log('📦 Booking metadata:', { userId, mentorId, slotId, learnerEmail })
 
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       p_learner_email: learnerEmail,
       p_learner_phone: learnerPhone || null,
       p_session_notes: sessionNotes || null,
-      p_timezone: 'UTC'
+      p_timezone: userTimezone || 'UTC'
     }
 
     console.log('📋 Booking params:', bookingParams)
@@ -172,12 +173,14 @@ export async function POST(request: NextRequest) {
             weekday: 'long', 
             month: 'long', 
             day: 'numeric',
-            year: 'numeric'
+            year: 'numeric',
+            timeZone: userTimezone || 'UTC'
           }),
           bookingTime: startTime.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit',
-            hour12: true 
+            hour12: true,
+            timeZone: userTimezone || 'UTC'
           }),
           duration: `${durationMinutes} minutes`,
           sessionNotes: sessionNotes || undefined

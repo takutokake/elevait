@@ -373,10 +373,10 @@ export async function sendCancellationEmails(data: CancellationEmailData) {
  * Sends to: Slack channel via webhook
  */
 export async function sendSlackBookingNotification(data: BookingEmailData) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL
+  const webhookUrl = process.env.SLACK_WEBHOOK
   
   if (!webhookUrl) {
-    console.warn('SLACK_WEBHOOK_URL not configured - skipping Slack notification')
+    console.warn('SLACK_WEBHOOK not configured - skipping Slack notification')
     return null
   }
 
@@ -587,10 +587,10 @@ export async function sendSlackCoachApplicationNotification(data: {
   alumniSchool?: string
   pricingModel: string
 }) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL
+  const webhookUrl = process.env.SLACK_WEBHOOK
 
   if (!webhookUrl) {
-    console.warn('SLACK_WEBHOOK_URL not configured - skipping Slack notification')
+    console.warn('SLACK_WEBHOOK not configured - skipping Slack notification')
     return null
   }
 
