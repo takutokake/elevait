@@ -23,7 +23,7 @@ export default function CoachesPage() {
   // New filter states
   const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid' | 'under50'>('all')
   const [hiredWithinFilter, setHiredWithinFilter] = useState<'all' | '3months' | '6months' | '1year' | '2years'>('all')
-  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([])
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>([])
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>([])
   const [sortBy, setSortBy] = useState<'relevance' | 'rating' | 'sessions' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
@@ -182,13 +182,13 @@ export default function CoachesPage() {
       })
     }
     
-    // Specialization filter - use specializations field (source of truth)
-    if (selectedSpecializations.length > 0) {
+    // Focus area filter - uses focus_areas field (same data as coach card pills)
+    if (selectedFocusAreas.length > 0) {
       filtered = filtered.filter(mentor => {
-        const specializations = mentor.mentor_data?.specializations || []
-        const normalizedSpecs = specializations.map(s => s.toLowerCase())
-        return selectedSpecializations.some(spec => 
-          normalizedSpecs.some(s => s.includes(spec.toLowerCase()) || spec.toLowerCase().includes(s))
+        const focusAreas = mentor.mentor_data?.focus_areas || []
+        const normalizedAreas = focusAreas.map(a => a.toLowerCase())
+        return selectedFocusAreas.some(area => 
+          normalizedAreas.some(a => a.includes(area.toLowerCase()) || area.toLowerCase().includes(a))
         )
       })
     }
@@ -219,40 +219,71 @@ export default function CoachesPage() {
     filtered = sortMentors(filtered, sortBy)
     
     setFilteredMentors(filtered)
-  }, [searchQuery, selectedCompanies, priceFilter, hiredWithinFilter, selectedSpecializations, selectedSessionTypes, availabilityFilter, mentors, mentorAvailability, sortBy])
+  }, [searchQuery, selectedCompanies, priceFilter, hiredWithinFilter, selectedFocusAreas, selectedSessionTypes, availabilityFilter, mentors, mentorAvailability, sortBy])
   
-  // Sorting function
+  // Pinned coaches configuration
+  const PINNED_COACHES: { name: string; order: number }[] = [
+    { name: 'Takuto Kakeda', order: 1 },
+    { name: 'Ryan Pham', order: 2 },
+  ]
+
+  const getPinOrder = (mentor: MentorWithDetails): number | null => {
+    const name = mentor.full_name?.toLowerCase().trim() || ''
+    for (const pinned of PINNED_COACHES) {
+      if (name === pinned.name.toLowerCase()) return pinned.order
+    }
+    return null
+  }
+
+  const hasFreeSession = (mentor: MentorWithDetails): boolean => {
+    const model = mentor.mentor_data?.pricing_model
+    return model === 'free' || model === 'both'
+  }
+
+  // Sorting function with pinned priority + free sessions first
   const sortMentors = (mentorList: MentorWithDetails[], sort: string) => {
     const sorted = [...mentorList]
+
+    // First apply the user-selected sort
     switch (sort) {
       case 'sessions':
-        return sorted.sort((a, b) => {
-          const sessionsA = a.mentor_data?.review_count || 0
-          const sessionsB = b.mentor_data?.review_count || 0
-          return sessionsB - sessionsA
-        })
+        sorted.sort((a, b) => (b.mentor_data?.review_count || 0) - (a.mentor_data?.review_count || 0))
+        break
       case 'price_low':
-        return sorted.sort((a, b) => {
-          const priceA = a.mentor_data?.price_cents || 0
-          const priceB = b.mentor_data?.price_cents || 0
-          return priceA - priceB
-        })
+        sorted.sort((a, b) => (a.mentor_data?.price_cents || 0) - (b.mentor_data?.price_cents || 0))
+        break
       case 'price_high':
-        return sorted.sort((a, b) => {
-          const priceA = a.mentor_data?.price_cents || 0
-          const priceB = b.mentor_data?.price_cents || 0
-          return priceB - priceA
-        })
+        sorted.sort((a, b) => (b.mentor_data?.price_cents || 0) - (a.mentor_data?.price_cents || 0))
+        break
       case 'newest':
-        return sorted.sort((a, b) => {
+        sorted.sort((a, b) => {
           const dateA = new Date(a.mentor_data?.hired_date || a.mentor_data?.created_at || 0).getTime()
           const dateB = new Date(b.mentor_data?.hired_date || b.mentor_data?.created_at || 0).getTime()
           return dateB - dateA
         })
+        break
       case 'relevance':
       default:
-        return sorted // Keep original order for relevance
+        // For relevance: sort unpinned coaches by free sessions first
+        sorted.sort((a, b) => {
+          const aFree = hasFreeSession(a) ? 0 : 1
+          const bFree = hasFreeSession(b) ? 0 : 1
+          return aFree - bFree
+        })
+        break
     }
+
+    // Then always float pinned coaches to the top
+    sorted.sort((a, b) => {
+      const pinA = getPinOrder(a)
+      const pinB = getPinOrder(b)
+      if (pinA !== null && pinB !== null) return pinA - pinB
+      if (pinA !== null) return -1
+      if (pinB !== null) return 1
+      return 0
+    })
+
+    return sorted
   }
   
   // Re-check availability when filter changes
@@ -276,20 +307,20 @@ export default function CoachesPage() {
     setCompanySearchQuery('')
     setPriceFilter('all')
     setHiredWithinFilter('all')
-    setSelectedSpecializations([])
+    setSelectedFocusAreas([])
     setSelectedSessionTypes([])
     setAvailabilityFilter('all')
     setSortBy('relevance')
   }
   
-  // Get all unique specializations from mentors
-  const getAllSpecializations = () => {
-    const specsSet = new Set<string>()
+  // Get all unique focus areas from mentors (same data source as coach card pills)
+  const getAllFocusAreas = () => {
+    const areasSet = new Set<string>()
     mentors.forEach(mentor => {
-      const specs = mentor.mentor_data?.specializations || []
-      specs.forEach(s => specsSet.add(s))
+      const areas = mentor.mentor_data?.focus_areas || []
+      areas.forEach(a => areasSet.add(a))
     })
-    return Array.from(specsSet).sort()
+    return Array.from(areasSet).sort()
   }
   
   // Get all unique session types from mentors
@@ -348,9 +379,9 @@ export default function CoachesPage() {
     return decoded
   }
   
-  const handleSpecializationToggle = (spec: string) => {
-    setSelectedSpecializations(prev => 
-      prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]
+  const handleFocusAreaToggle = (area: string) => {
+    setSelectedFocusAreas(prev => 
+      prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]
     )
   }
   
@@ -367,7 +398,7 @@ export default function CoachesPage() {
     : allCompanies
   const displayedCompanies = filteredCompanies.slice(0, 15) // Show top 15 companies
   
-  const allSpecializations = getAllSpecializations()
+  const allFocusAreas = getAllFocusAreas()
   const allSessionTypes = getAllSessionTypes()
   return (
     <Layout variant="landing">
@@ -508,29 +539,29 @@ export default function CoachesPage() {
                       </div>
                     </details>
 
-                    {/* Specialization Filter */}
+                    {/* Focus Area Filter */}
                     <details className="flex flex-col border-b border-[#E2E8F0] dark:border-[#374151] py-2 group">
                       <summary className="flex cursor-pointer items-center justify-between gap-6 py-2">
-                        <p className="text-sm font-medium">Specialization</p>
+                        <p className="text-sm font-medium">Focus Area</p>
                         <svg className="w-5 h-5 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </summary>
                       <div className="space-y-3 pt-2 pb-2 max-h-48 overflow-y-auto">
-                        {allSpecializations.length > 0 ? (
-                          allSpecializations.map((spec: string) => (
-                            <label key={spec} className="flex items-center gap-3 cursor-pointer">
+                        {allFocusAreas.length > 0 ? (
+                          allFocusAreas.map((area: string) => (
+                            <label key={area} className="flex items-center gap-3 cursor-pointer">
                               <input 
                                 className="form-checkbox rounded border-[#E2E8F0] dark:border-[#374151] bg-transparent text-[#0ea5e9] focus:ring-[#0ea5e9]/50" 
                                 type="checkbox"
-                                checked={selectedSpecializations.includes(spec)}
-                                onChange={() => handleSpecializationToggle(spec)}
+                                checked={selectedFocusAreas.includes(area)}
+                                onChange={() => handleFocusAreaToggle(area)}
                               />
-                              <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{decodeHtmlEntities(spec)}</span>
+                              <span className="text-sm text-[#64748B] dark:text-[#9CA3AF]">{decodeHtmlEntities(area)}</span>
                             </label>
                           ))
                         ) : (
-                          <p className="text-xs text-[#64748B] dark:text-[#9CA3AF]">No specializations available</p>
+                          <p className="text-xs text-[#64748B] dark:text-[#9CA3AF]">No focus areas available</p>
                         )}
                       </div>
                     </details>

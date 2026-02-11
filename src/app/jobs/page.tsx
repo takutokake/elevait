@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Layout from "../../components/Layout"
+import { useRouter } from 'next/navigation'
 
 interface Job {
   id: string
@@ -42,6 +43,7 @@ const SORT_OPTIONS = [
 ]
 
 export default function JobsPage() {
+  // ── State: filters and page are separate pieces of state ──
   const [jobs, setJobs] = useState<Job[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -56,8 +58,26 @@ export default function JobsPage() {
   const [sortBy, setSortBy] = useState('recent')
   const [isEmpty, setIsEmpty] = useState(false)
   const [coachCompanies, setCoachCompanies] = useState<Record<string, CoachCompanyInfo>>({})
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
-  // Debounce search
+  // ── Filter updaters: always reset page to 1 before re-fetch ──
+  const updateRoleType = (v: string) => { setRoleType(v); setPage(1) }
+  const updateWorkModel = (v: string) => { setWorkModel(v); setPage(1) }
+  const updateTopOnly = (v: boolean) => { setTopOnly(v); setPage(1) }
+  const updateCoachOnly = (v: boolean) => { setCoachOnly(v); setPage(1) }
+  const updateSortBy = (v: string) => { setSortBy(v); setPage(1) }
+
+  const clearFilters = () => {
+    setSearch('')
+    setRoleType('')
+    setWorkModel('')
+    setTopOnly(false)
+    setCoachOnly(false)
+    setSortBy('recent')
+    setPage(1)
+  }
+
+  // Debounce search — reset page inside the debounce callback
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search)
@@ -66,7 +86,7 @@ export default function JobsPage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  // Fetch jobs
+  // ── Fetch jobs: depends on filters + page ──
   const fetchJobs = useCallback(async () => {
     setLoading(true)
     try {
@@ -75,6 +95,7 @@ export default function JobsPage() {
       if (roleType) params.set('role_type', roleType)
       if (workModel) params.set('work_model', workModel)
       if (topOnly) params.set('top_only', 'true')
+      if (coachOnly) params.set('coach_only', 'true')
       params.set('sort', sortBy)
       params.set('page', page.toString())
       params.set('limit', '50')
@@ -86,13 +107,13 @@ export default function JobsPage() {
       setJobs(data.jobs)
       setTotal(data.total)
       setTotalPages(data.total_pages)
-      setIsEmpty(data.total === 0 && !debouncedSearch && !roleType && !workModel && !topOnly)
+      setIsEmpty(data.total === 0 && !debouncedSearch && !roleType && !workModel && !topOnly && !coachOnly)
     } catch (err) {
       console.error('Error fetching jobs:', err)
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, roleType, workModel, topOnly, sortBy, page])
+  }, [debouncedSearch, roleType, workModel, topOnly, coachOnly, sortBy, page])
 
   useEffect(() => {
     fetchJobs()
@@ -106,38 +127,34 @@ export default function JobsPage() {
       .catch(() => {})
   }, [])
 
-  const clearFilters = () => {
-    setSearch('')
-    setRoleType('')
-    setWorkModel('')
-    setTopOnly(false)
-    setCoachOnly(false)
-    setSortBy('relevance')
-    setPage(1)
-  }
-
   const hasActiveFilters = debouncedSearch || roleType || workModel || topOnly || coachOnly
 
-  // Client-side filter: only show jobs where we have a matching coach
-  const displayedJobs = coachOnly
-    ? jobs.filter(job => findCoachMatch(job.company, coachCompanies) !== null)
-    : jobs
-
-  function findCoachMatch(
-    jobCompany: string,
-    companies: Record<string, CoachCompanyInfo>
-  ): CoachCompanyInfo | null {
-    // Exact match first
-    if (companies[jobCompany]) return companies[jobCompany]
-    
-    // Case-insensitive match
+  // Helper: find coach match for a company name
+  const findCoachMatch = useCallback((jobCompany: string): CoachCompanyInfo | null => {
+    if (coachCompanies[jobCompany]) return coachCompanies[jobCompany]
     const normalized = jobCompany.toLowerCase().trim()
-    for (const [name, info] of Object.entries(companies)) {
+    for (const [name, info] of Object.entries(coachCompanies)) {
       if (name.toLowerCase().trim() === normalized) return info
     }
-    
     return null
-  }
+  }, [coachCompanies])
+
+  // Jobs are now filtered server-side (including coach_only), so displayedJobs = jobs
+  const displayedJobs = jobs
+
+  // Compute unique companies on current page that have coaches
+  const coachCompaniesOnPage = useMemo(() => {
+    const seen = new Set<string>()
+    const matches: { company: string; count: number }[] = []
+    for (const job of displayedJobs) {
+      const key = job.company.toLowerCase().trim()
+      if (seen.has(key)) continue
+      seen.add(key)
+      const match = findCoachMatch(job.company)
+      if (match) matches.push({ company: job.company, count: match.count })
+    }
+    return matches
+  }, [displayedJobs, findCoachMatch])
 
   return (
     <Layout variant="landing">
@@ -192,7 +209,7 @@ export default function JobsPage() {
                   {/* Role Type */}
                   <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <button
-                      onClick={() => { setRoleType(''); setPage(1) }}
+                      onClick={() => updateRoleType('')}
                       className={`px-3 py-2 text-sm font-medium transition-colors ${
                         !roleType
                           ? 'bg-[#0ea5e9] text-white'
@@ -202,7 +219,7 @@ export default function JobsPage() {
                       All Roles
                     </button>
                     <button
-                      onClick={() => { setRoleType('new_grad'); setPage(1) }}
+                      onClick={() => updateRoleType('new_grad')}
                       className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
                         roleType === 'new_grad'
                           ? 'bg-[#0ea5e9] text-white'
@@ -212,7 +229,7 @@ export default function JobsPage() {
                       New Grad
                     </button>
                     <button
-                      onClick={() => { setRoleType('internship'); setPage(1) }}
+                      onClick={() => updateRoleType('internship')}
                       className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
                         roleType === 'internship'
                           ? 'bg-[#0ea5e9] text-white'
@@ -225,7 +242,7 @@ export default function JobsPage() {
                   {/* Work Model */}
                   <select
                     value={workModel}
-                    onChange={(e) => { setWorkModel(e.target.value); setPage(1) }}
+                    onChange={(e) => updateWorkModel(e.target.value)}
                     className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]"
                   >
                     <option value="">All Work Models</option>
@@ -237,7 +254,7 @@ export default function JobsPage() {
                   {/* Sort */}
                   <select
                     value={sortBy}
-                    onChange={(e) => { setSortBy(e.target.value); setPage(1) }}
+                    onChange={(e) => updateSortBy(e.target.value)}
                     className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#333333] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]"
                   >
                     {SORT_OPTIONS.map(opt => (
@@ -247,7 +264,7 @@ export default function JobsPage() {
 
                   {/* Top Companies Toggle */}
                   <button
-                    onClick={() => { setTopOnly(!topOnly); setPage(1) }}
+                    onClick={() => updateTopOnly(!topOnly)}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
                       topOnly
                         ? 'border-[#f97316] bg-[#f97316]/10 text-[#f97316]'
@@ -260,7 +277,7 @@ export default function JobsPage() {
 
                   {/* Has Coach Toggle */}
                   <button
-                    onClick={() => { setCoachOnly(!coachOnly); setPage(1) }}
+                    onClick={() => updateCoachOnly(!coachOnly)}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
                       coachOnly
                         ? 'border-[#8b5cf6] bg-[#8b5cf6]/10 text-[#8b5cf6]'
@@ -287,6 +304,36 @@ export default function JobsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Coach Promotion Banner */}
+              {!loading && coachCompaniesOnPage.length > 0 && !coachOnly && (
+                <Link
+                  href={`/coaches`}
+                  className="flex items-start gap-3 bg-violet-50 dark:bg-violet-900/10 border border-violet-200/60 dark:border-violet-800/30 rounded-xl p-4 mb-4 hover:bg-violet-100/60 dark:hover:bg-violet-900/20 transition-colors group"
+                >
+                  <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-violet-900 dark:text-violet-300">
+                      Coaches available for {coachCompaniesOnPage.length === 1
+                        ? coachCompaniesOnPage[0].company
+                        : coachCompaniesOnPage.length <= 3
+                          ? coachCompaniesOnPage.map(c => c.company).join(', ')
+                          : `${coachCompaniesOnPage.slice(0, 2).map(c => c.company).join(', ')} + ${coachCompaniesOnPage.length - 2} more`
+                      }
+                    </p>
+                    <p className="text-xs text-violet-700/70 dark:text-violet-400/70 mt-0.5">
+                      Get help with mock interviews, resume reviews, and application strategy from people who&apos;ve been through the process.
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 text-violet-400 group-hover:text-violet-600 dark:group-hover:text-violet-300 flex-shrink-0 mt-1 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
 
               {/* Job Cards */}
               {loading ? (
@@ -316,9 +363,18 @@ export default function JobsPage() {
               ) : (
                 <div className="grid gap-3">
                   {displayedJobs.map((job) => (
-                    <JobCard key={job.id} job={job} coachMatch={findCoachMatch(job.company, coachCompanies)} />
+                    <JobCard key={job.id} job={job} coachMatch={findCoachMatch(job.company)} onSelect={setSelectedJob} />
                   ))}
                 </div>
+              )}
+
+              {/* Job Details Modal */}
+              {selectedJob && (
+                <JobDetailsModal
+                  job={selectedJob}
+                  coachMatch={findCoachMatch(selectedJob.company)}
+                  onClose={() => setSelectedJob(null)}
+                />
               )}
 
               {/* Pagination */}
@@ -358,7 +414,7 @@ export default function JobsPage() {
 
 // ─── Job Card Component ────────────────────────────────────────────
 
-function JobCard({ job, coachMatch }: { job: Job; coachMatch: CoachCompanyInfo | null }) {
+function JobCard({ job, coachMatch, onSelect }: { job: Job; coachMatch: CoachCompanyInfo | null; onSelect: (job: Job) => void }) {
   const workModelColors: Record<string, string> = {
     'Remote': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     'Hybrid': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -370,7 +426,6 @@ function JobCard({ job, coachMatch }: { job: Job; coachMatch: CoachCompanyInfo |
     ? 'bg-[#8b5cf6]/10 text-[#8b5cf6]'
     : 'bg-[#0ea5e9]/10 text-[#0ea5e9]'
 
-  // Generate company initial for avatar
   const initial = job.company
     .replace(/[^a-zA-Z0-9 ]/g, '')
     .split(' ')
@@ -380,13 +435,11 @@ function JobCard({ job, coachMatch }: { job: Job; coachMatch: CoachCompanyInfo |
     .toUpperCase()
 
   return (
-    <div className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 hover:border-[#0ea5e9]/50 hover:shadow-md transition-all">
-      <a
-        href={job.job_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-start gap-3 sm:gap-4"
-      >
+    <div
+      onClick={() => onSelect(job)}
+      className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 hover:border-[#0ea5e9]/50 hover:shadow-md transition-all cursor-pointer"
+    >
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* Company Avatar */}
         <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 text-sm sm:text-base font-bold ${
           job.is_top_company 
@@ -407,15 +460,12 @@ function JobCard({ job, coachMatch }: { job: Job; coachMatch: CoachCompanyInfo |
                 <span className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
                   {job.company}
                 </span>
-                {job.is_top_company && (
-                  <span className="text-xs" title="Top company">⭐</span>
-                )}
               </div>
             </div>
 
-            {/* Apply arrow */}
+            {/* View details arrow */}
             <svg className="w-5 h-5 text-gray-400 group-hover:text-[#0ea5e9] transition-colors flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
 
@@ -441,26 +491,166 @@ function JobCard({ job, coachMatch }: { job: Job; coachMatch: CoachCompanyInfo |
             )}
           </div>
         </div>
-      </a>
+      </div>
 
-      {/* Coach match badge — separate from the job link */}
+      {/* Coach match badge */}
       {coachMatch && (
         <div className="mt-2.5 ml-[52px] sm:ml-[64px]">
-          <Link
-            href={`/coaches?company=${encodeURIComponent(job.company)}`}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#8b5cf6]/10 text-[#8b5cf6] hover:bg-[#8b5cf6]/20 transition-colors border border-[#8b5cf6]/20"
-          >
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20">
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
             <span className="hidden sm:inline">{coachMatch.count === 1 ? '1 coach' : `${coachMatch.count} coaches`} with {job.company} experience</span>
             <span className="sm:hidden">Coach available</span>
-            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
+          </span>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Job Details Modal ─────────────────────────────────────────────
+
+function JobDetailsModal({ job, coachMatch, onClose }: { job: Job; coachMatch: CoachCompanyInfo | null; onClose: () => void }) {
+  const workModelColors: Record<string, string> = {
+    'Remote': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
+    'Hybrid': 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400',
+    'On Site': 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',
+  }
+
+  const roleTypeLabel = job.role_type === 'new_grad' ? 'New Grad' : 'Internship'
+  const roleTypeColor = job.role_type === 'new_grad'
+    ? 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400'
+    : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400'
+
+  const initial = job.company
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase()
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      document.body.style.overflow = 'unset'
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="relative bg-white dark:bg-[#1c2a36] rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors z-10"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="p-6 sm:p-7">
+          {/* Company avatar + name */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+              job.is_top_company
+                ? 'bg-gradient-to-br from-violet-100 to-sky-100 text-violet-600 dark:from-violet-900/30 dark:to-sky-900/30 dark:text-violet-400'
+                : 'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400'
+            }`}>
+              {initial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{job.company}</p>
+              {job.company_url && (
+                <a href={job.company_url} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-500 hover:text-violet-600 hover:underline">
+                  Visit website →
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white pr-8 mb-3 leading-snug">
+            {job.job_title}
+          </h2>
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-1.5 mb-5">
+            <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${roleTypeColor}`}>
+              {roleTypeLabel}
+            </span>
+            <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${workModelColors[job.work_model] || 'bg-gray-50 text-gray-600 dark:bg-gray-700/30 dark:text-gray-400'}`}>
+              {job.work_model}
+            </span>
+            <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-50 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400">
+              {job.location}
+            </span>
+            {job.date_posted && (
+              <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-50 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400">
+                Posted {job.date_posted}
+              </span>
+            )}
+            {job.is_top_company && (
+              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400">
+                ⭐ Top Company
+              </span>
+            )}
+          </div>
+
+          {/* Context description */}
+          <div className="bg-gray-50 dark:bg-gray-800/40 rounded-xl p-4 mb-5 space-y-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              This {roleTypeLabel.toLowerCase()} role at <span className="font-medium text-gray-800 dark:text-gray-200">{job.company}</span> is a {job.work_model.toLowerCase()} position based in {job.location}.
+            </p>
+            {coachMatch && coachMatch.count > 0 && (
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                Our {job.company} coaches can help with mock interviews, resume reviews, and application strategy.
+              </p>
+            )}
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Listings link directly to official application pages.
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2.5">
+            <a
+              href={job.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl transition-colors text-sm"
+            >
+              Apply Now
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+
+            {coachMatch && coachMatch.count > 0 && (
+              <Link
+                href={`/coaches?company=${encodeURIComponent(job.company)}`}
+                onClick={onClose}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 border-2 border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 font-semibold rounded-xl transition-colors text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Find {coachMatch.count === 1 ? '1 Coach' : `${coachMatch.count} Coaches`} from {job.company}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

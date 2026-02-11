@@ -13,27 +13,9 @@ export default function CoachCard({ mentor }: CoachCardProps) {
   const displayTitle = mentor.mentor_data?.current_title || 'Product Manager';
   const displayCompany = mentor.mentor_data?.current_company || '';
   
-  // Use session_types from mentor_data for the bubbles (primary display)
-  // Fall back to focus_areas if session_types is empty
-  const sessionTypes = mentor.mentor_data?.session_types?.slice(0, 3) || [];
+  // Use focus_areas from mentor_data for the pills under the coach's name
   const focusAreas = mentor.mentor_data?.focus_areas?.slice(0, 3) || [];
-  
-  // Format session type labels for display
-  const formatSessionType = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      'mock_interview': 'Mock Interview',
-      'resume_review': 'Resume Review',
-      'career_advice': 'Career Advice',
-      'portfolio_review': 'Portfolio Review',
-      'salary_negotiation': 'Salary Negotiation',
-      'job_search': 'Job Search Help',
-      'free_intro': 'Free Intro',
-    };
-    return typeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-  
-  // Use session types if available, otherwise fall back to focus areas
-  const displayTags = sessionTypes.length > 0 ? sessionTypes : focusAreas;
+  const displayTags = focusAreas;
 
   // Use pricing_model and price_cents to determine pricing display
   const priceCents = mentor.mentor_data?.price_cents;
@@ -108,7 +90,7 @@ export default function CoachCard({ mentor }: CoachCardProps) {
           <div className="flex flex-wrap gap-1.5 mb-4">
             {displayTags.map((tag, idx) => (
               <span key={idx} className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-100 dark:border-blue-800">
-                {sessionTypes.length > 0 ? formatSessionType(tag) : tag}
+                {tag}
               </span>
             ))}
           </div>

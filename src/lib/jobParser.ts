@@ -139,10 +139,20 @@ export function getCompanyRank(companyName: string): { isTop: boolean; rank: num
     return { isTop: true, rank: TOP_COMPANIES[normalized] }
   }
   
-  // Partial match (e.g., "Capital One" matches "capital one")
+  // Word-boundary match: split company name into words and check if any
+  // word or multi-word segment matches a key exactly. This avoids false
+  // positives like "TekniPlex" matching "x" or "Leap" matching "ea".
+  const words = normalized.split(/[\s,.\-/&]+/).filter(Boolean)
   for (const [key, rank] of Object.entries(TOP_COMPANIES)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return { isTop: true, rank }
+    const keyWords = key.split(/\s+/)
+    // For single-word keys shorter than 4 chars, require exact full match only
+    if (keyWords.length === 1 && key.length < 4) continue
+    // Check if the key appears as a complete word sequence in the company name
+    if (keyWords.length === 1) {
+      if (words.includes(key)) return { isTop: true, rank }
+    } else {
+      // Multi-word key: check if the company name contains the full key as a substring
+      if (normalized.includes(key)) return { isTop: true, rank }
     }
   }
   
