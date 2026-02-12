@@ -345,12 +345,21 @@ export async function POST(request: NextRequest) {
         sessionNotes: booking.session_notes || undefined
       }
       
-      await sendBookingRequestEmails(emailData)
-      await sendAdminBookingNotification(emailData)
-      await sendSlackBookingNotification(emailData)
+      const notificationResults = await Promise.allSettled([
+        sendBookingRequestEmails(emailData),
+        sendAdminBookingNotification(emailData),
+        sendSlackBookingNotification(emailData)
+      ])
+
+      notificationResults.forEach((result, i) => {
+        const labels = ['booking emails', 'admin email', 'Slack notification']
+        if (result.status === 'rejected') {
+          console.error(`❌ Failed to send ${labels[i]}:`, result.reason)
+        }
+      })
     } catch (emailError) {
-      console.error('Failed to send booking emails:', emailError)
-      // Don't fail the booking if emails fail
+      console.error('Failed to send booking notifications:', emailError)
+      // Don't fail the booking if notifications fail
     }
 
     // Capture free booking created event (server-side) if this was a free session
