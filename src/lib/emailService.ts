@@ -373,7 +373,9 @@ export async function sendCancellationEmails(data: CancellationEmailData) {
  * Sends to: Slack channel via webhook
  */
 export async function sendSlackBookingNotification(data: BookingEmailData) {
+  console.log('🔔 [Slack] sendSlackBookingNotification called with data:', data)
   const webhookUrl = process.env.SLACK_WEBHOOK
+  console.log('🔔 [Slack] Webhook URL exists:', !!webhookUrl)
   
   if (!webhookUrl) {
     console.warn('SLACK_WEBHOOK not configured - skipping Slack notification')
@@ -381,6 +383,7 @@ export async function sendSlackBookingNotification(data: BookingEmailData) {
   }
 
   const { studentName, studentEmail, coachName, coachEmail, bookingDate, bookingTime, duration, sessionNotes } = data
+  console.log('🔔 [Slack] Preparing message for:', { studentName, coachName, bookingDate, bookingTime })
 
   const message = {
     blocks: [
@@ -441,20 +444,24 @@ export async function sendSlackBookingNotification(data: BookingEmailData) {
   }
 
   try {
+    console.log('🔔 [Slack] Sending POST request to webhook...')
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message)
     })
 
+    console.log('🔔 [Slack] Response status:', response.status)
     if (!response.ok) {
-      throw new Error(`Slack API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error('🔔 [Slack] Error response:', errorText)
+      throw new Error(`Slack API error: ${response.status} - ${errorText}`)
     }
 
-    console.log('✅ Slack notification sent')
+    console.log('✅ Slack booking notification sent successfully')
     return true
   } catch (error) {
-    console.error('❌ Failed to send Slack notification:', error)
+    console.error('❌ Failed to send Slack booking notification:', error)
     return null
   }
 }
