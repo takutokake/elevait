@@ -107,7 +107,7 @@ async function handleReactionAdded(event: any): Promise<{ success: boolean; mess
   // 2. Promote user to mentor role
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ role: 'mentor', onboarding_completed: true })
+    .update({ role: 'mentor', onboarding_complete: true })
     .eq('id', appData.user_id)
 
   if (profileError) {
