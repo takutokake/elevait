@@ -51,30 +51,10 @@ async function postToSlack(channel: string, text: string, thread_ts?: string) {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
     },
     body: JSON.stringify({ channel, text, ...(thread_ts ? { thread_ts } : {}) }),
   })
-}
-
-async function fetchSlackMessage(channel: string, ts: string) {
-  const res = await fetch(
-    `https://slack.com/api/conversations.history?channel=${channel}&latest=${ts}&limit=1&inclusive=true`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
-      },
-    }
-  )
-  const data = await res.json()
-  if (!data.ok || !data.messages?.length) return null
-  // Flatten blocks into plain text for ID extraction
-  const msg = data.messages[0]
-  const blockText = (msg.blocks ?? [])
-    .flatMap((b: any) => [b.text?.text, ...(b.fields ?? []).map((f: any) => f.text)])
-    .filter(Boolean)
-    .join('\n')
-  return { text: msg.text || '', blockText, raw: msg }
 }
 
 async function handleReactionAdded(event: any): Promise<{ success: boolean; message: string }> {
@@ -83,41 +63,45 @@ async function handleReactionAdded(event: any): Promise<{ success: boolean; mess
   if (item.type !== 'message') return { success: false, message: 'Not a message reaction' }
 
   const isApproval = ['white_check_mark', 'thumbsup', 'heavy_check_mark', 'check'].includes(reaction)
-  if (!isApproval) return { success: false, message: 'Not an approval reaction — ignoring' }
+  if (!isApproval) return { success: false, message: `Not an approval reaction (${reaction}) — ignoring` }
 
-  const msg = await fetchSlackMessage(item.channel, item.ts)
-  if (!msg) return { success: false, message: 'Could not fetch Slack message' }
-
-  // Search both plain text and block text for the application ID
-  const combined = `${msg.text}\n${msg.blockText}`
-  const match = combined.match(/Application ID[:\*\s]+([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-
-  if (!match) {
-    console.log('[Slack] No application ID found in message — not a mentor application message')
-    return { success: false, message: 'No application ID in message' }
-  }
-
-  const applicationId = match[1]
-  console.log(`[Slack] Approving application ${applicationId} by Slack user ${user}`)
+  console.log(`[Slack] Approval reaction "${reaction}" on message ts=${item.ts} in channel=${item.channel}`)
 
   const supabase = getServiceClient()
 
+  // Look up the application by the Slack message timestamp stored at notification time
+  const { data: appData, error: lookupError } = await supabase
+    .from('mentor_applications')
+    .select('id, user_id, status')
+    .eq('slack_message_ts', item.ts)
+    .single()
+
+  if (lookupError || !appData) {
+    console.log('[Slack] No application found for message ts:', item.ts, lookupError?.message)
+    return { success: false, message: 'No application linked to this message' }
+  }
+
+  if (appData.status === 'approved') {
+    console.log(`[Slack] Application ${appData.id} already approved — skipping`)
+    return { success: false, message: 'Already approved' }
+  }
+
+  console.log(`[Slack] Approving application ${appData.id} for user ${appData.user_id}`)
+
   // 1. Update application status
-  const { data: appData, error: appError } = await supabase
+  const { error: appError } = await supabase
     .from('mentor_applications')
     .update({
       status: 'approved',
       approved_at: new Date().toISOString(),
       approved_by: user,
     })
-    .eq('id', applicationId)
-    .select('user_id')
-    .single()
+    .eq('id', appData.id)
 
-  if (appError || !appData) {
+  if (appError) {
     console.error('[Slack] DB error updating application:', appError)
-    await postToSlack(item.channel, `❌ Failed to approve application \`${applicationId}\`: ${appError?.message ?? 'not found'}`, item.ts)
-    return { success: false, message: appError?.message ?? 'Application not found' }
+    await postToSlack(item.channel, `❌ Failed to approve application \`${appData.id}\`: ${appError.message}`, item.ts)
+    return { success: false, message: appError.message }
   }
 
   // 2. Promote user to mentor role
@@ -138,13 +122,13 @@ async function handleReactionAdded(event: any): Promise<{ success: boolean; mess
     .upsert({ id: appData.user_id, is_active: true }, { onConflict: 'id' })
 
   if (mentorError) {
-    console.error('[Slack] Mentor upsert error:', mentorError)
+    console.error('[Slack] Mentor upsert error (non-fatal):', mentorError)
   }
 
   // 4. Post confirmation thread reply
   await postToSlack(
     item.channel,
-    `✅ *Mentor application approved!*\nApplication \`${applicationId}\` approved by <@${user}>. The applicant is now an active mentor.`,
+    `✅ *Mentor application approved!*\nApplication \`${appData.id}\` approved by <@${user}>. The applicant is now an active mentor.`,
     item.ts
   )
 

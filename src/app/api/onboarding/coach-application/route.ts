@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      await sendSlackCoachApplicationNotification({
+      const slackTs = await sendSlackCoachApplicationNotification({
         applicantName: applicantProfile?.full_name || 'Unknown',
         applicantEmail: user.email || '',
         currentTitle,
@@ -164,6 +164,14 @@ export async function POST(request: NextRequest) {
         pricingModel,
         applicationId: applicationInsert?.id,
       })
+
+      // Store the Slack message ts so we can look up the application on emoji reaction
+      if (slackTs && applicationInsert?.id) {
+        await supabase
+          .from('mentor_applications')
+          .update({ slack_message_ts: slackTs })
+          .eq('id', applicationInsert.id)
+      }
     } catch (slackError) {
       console.error('Failed to send Slack coach application notification:', slackError)
     }

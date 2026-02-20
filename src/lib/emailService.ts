@@ -696,13 +696,13 @@ export async function sendSlackCoachApplicationNotification(data: {
       body: JSON.stringify(message)
     })
 
-    const result = await response.json() as { ok: boolean; error?: string }
+    const result = await response.json() as { ok: boolean; error?: string; ts?: string }
     if (!result.ok) {
       throw new Error(`Slack API error: ${result.error}`)
     }
 
-    console.log('✅ Slack coach application notification sent to #mentor-application')
-    return true
+    console.log('✅ Slack coach application notification sent to #mentor-application, ts:', result.ts)
+    return result.ts ?? null
   } catch (error) {
     console.error('❌ Failed to send Slack coach application notification:', error)
     return null
