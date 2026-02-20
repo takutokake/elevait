@@ -88,38 +88,24 @@ async function handleReactionAdded(event: any): Promise<{ success: boolean; mess
 
   console.log(`[Slack] Approving application ${appData.id} for user ${appData.user_id}`)
 
-  // 1. Update application status
-  const { error: appError } = await supabase
-    .from('mentor_applications')
-    .update({
+  // Run all 3 DB writes in parallel
+  const [
+    { error: appError },
+    { error: profileError },
+    { error: mentorError },
+  ] = await Promise.all([
+    supabase.from('mentor_applications').update({
       status: 'approved',
       approved_at: new Date().toISOString(),
       approved_by: user,
-    })
-    .eq('id', appData.id)
+    }).eq('id', appData.id),
 
-  if (appError) {
-    console.error('[Slack] DB error updating application:', appError)
-    await postToSlack(item.channel, `❌ Failed to approve application \`${appData.id}\`: ${appError.message}`, item.ts)
-    return { success: false, message: appError.message }
-  }
+    supabase.from('profiles').update({
+      role: 'mentor',
+      onboarding_complete: true,
+    }).eq('id', appData.user_id),
 
-  // 2. Promote user to mentor role
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({ role: 'mentor', onboarding_complete: true })
-    .eq('id', appData.user_id)
-
-  if (profileError) {
-    console.error('[Slack] Profile update error:', profileError)
-    await postToSlack(item.channel, `⚠️ Application approved but profile update failed: ${profileError.message}`, item.ts)
-    return { success: false, message: profileError.message }
-  }
-
-  // 3. Upsert mentor record with full application data
-  const { error: mentorError } = await supabase
-    .from('mentors')
-    .upsert({
+    supabase.from('mentors').upsert({
       id: appData.user_id,
       current_title: appData.current_title,
       current_company: appData.current_company,
@@ -145,13 +131,23 @@ async function handleReactionAdded(event: any): Promise<{ success: boolean; mess
       offers_referrals: appData.offers_referrals,
       hired_date: appData.hired_date,
       is_active: true,
-    }, { onConflict: 'id' })
+    }, { onConflict: 'id' }),
+  ])
 
+  if (appError) {
+    console.error('[Slack] DB error updating application:', appError)
+    await postToSlack(item.channel, `❌ Failed to approve application \`${appData.id}\`: ${appError.message}`, item.ts)
+    return { success: false, message: appError.message }
+  }
+  if (profileError) {
+    console.error('[Slack] Profile update error:', profileError)
+    await postToSlack(item.channel, `⚠️ Application approved but profile update failed: ${profileError.message}`, item.ts)
+  }
   if (mentorError) {
     console.error('[Slack] Mentor upsert error (non-fatal):', mentorError)
   }
 
-  // 4. Post confirmation thread reply
+  // Post confirmation thread reply
   await postToSlack(
     item.channel,
     `✅ *Mentor application approved!*\nApplication \`${appData.id}\` approved by <@${user}>. The applicant is now an active mentor.`,
