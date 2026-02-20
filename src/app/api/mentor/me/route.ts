@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseServerClient, getSessionUser } from '@/lib/supabaseServer'
+import { getSessionUser } from '@/lib/supabaseServer'
+import { createClient } from '@supabase/supabase-js'
+
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function GET() {
   try {
-    const supabase = await getSupabaseServerClient()
+    const supabase = getServiceClient()
     const { user } = await getSessionUser()
 
     if (!user) {
