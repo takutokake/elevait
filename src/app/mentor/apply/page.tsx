@@ -320,7 +320,6 @@ export default function CoachApplicationPage() {
           shortDescription: formData.shortDescription,
           aboutMe: formData.aboutMe,
           jobTypeTags: formData.jobTypeTags,
-          specialties: formData.specialties,
           successfulCompanies: formData.successfulCompanies,
           companiesGotOffers: formData.companiesGotOffers,
           companiesInterviewed: formData.companiesInterviewed,
