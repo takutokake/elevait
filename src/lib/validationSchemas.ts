@@ -74,7 +74,7 @@ export const coachApplicationSchema = z.object({
   focusAreas: z.array(z.string().max(100)).min(1).max(10),
   priceDollars: z.number().min(0).max(10000),
   alumniSchool: z.string().max(200).trim().optional(),
-  shortDescription: z.string().min(10).max(500).trim(),
+  shortDescription: z.string().max(500).trim().optional(),
   aboutMe: z.string().min(50).max(2000).trim(),
   jobTypeTags: z.array(z.string().max(50)).max(10),
   successfulCompanies: z.array(z.string().max(100)).max(20).optional(),

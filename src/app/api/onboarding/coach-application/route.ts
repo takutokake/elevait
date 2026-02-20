@@ -26,13 +26,18 @@ export async function POST(request: NextRequest) {
     
     let validatedData
     try {
+      console.log('⚠️ Coach application form data:', JSON.stringify(body))
       validatedData = coachApplicationSchema.parse(body)
     } catch (error) {
       if (error instanceof ZodError) {
+        console.error('❌ Validation error in coach application:', error.format())
         return handleValidationError(error)
       }
+      console.error('❌ Unknown error in coach application validation:', error)
       throw error
     }
+    
+    console.log('✅ Validation successful')
 
     // SECURITY: Sanitize inputs
     const currentTitle = sanitizeText(validatedData.currentTitle, 200)
@@ -42,7 +47,9 @@ export async function POST(request: NextRequest) {
     const focusAreas = sanitizeStringArray(validatedData.focusAreas)
     const priceDollars = validatedData.priceDollars
     const alumniSchool = sanitizeText(validatedData.alumniSchool, 200)
-    const shortDescription = sanitizeTextNoEncode(validatedData.shortDescription, 500)
+    const shortDescription = validatedData.shortDescription
+      ? sanitizeTextNoEncode(validatedData.shortDescription, 500)
+      : null
     const aboutMe = sanitizeTextNoEncode(validatedData.aboutMe, 2000)
     const jobTypeTags = sanitizeStringArray(validatedData.jobTypeTags)
     const successfulCompanies = sanitizeStringArray(validatedData.successfulCompanies)
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
     const supabase = await getSupabaseServerClient()
 
     // Insert into mentor_applications table with ALL new fields
-    const { error: applicationError } = await supabase
+    const { data: applicationInsert, error: applicationError } = await supabase
       .from('mentor_applications')
       .insert({
         user_id: user.id,
@@ -103,6 +110,8 @@ export async function POST(request: NextRequest) {
         // Interview experience
         total_interviews: totalInterviews
       })
+      .select('id')
+      .single()
 
     if (applicationError) {
       console.error('[Security] Error inserting mentor application:', applicationError)
@@ -153,6 +162,7 @@ export async function POST(request: NextRequest) {
         linkedinUrl: linkedinUrl || '',
         alumniSchool,
         pricingModel,
+        applicationId: applicationInsert?.id,
       })
     } catch (slackError) {
       console.error('Failed to send Slack coach application notification:', slackError)

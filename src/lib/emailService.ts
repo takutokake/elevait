@@ -593,6 +593,7 @@ export async function sendSlackCoachApplicationNotification(data: {
   linkedinUrl: string
   alumniSchool?: string
   pricingModel: string
+  applicationId?: string // Add applicationId parameter
 }) {
   const webhookUrl = process.env.SLACK_WEBHOOK
 
@@ -612,6 +613,9 @@ export async function sendSlackCoachApplicationNotification(data: {
     alumniSchool,
     pricingModel,
   } = data
+
+  // Include application ID if provided
+  const applicationId = data.applicationId || 'unknown'
 
   const message = {
     blocks: [
@@ -657,6 +661,13 @@ export async function sendSlackCoachApplicationNotification(data: {
         }
       },
       {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Application ID:* ${applicationId}\n👉 *React with :white_check_mark: to approve this application*`
+        }
+      },
+      {
         type: "divider"
       },
       {
@@ -664,7 +675,7 @@ export async function sendSlackCoachApplicationNotification(data: {
         elements: [
           {
             type: "mrkdwn",
-            text: "📋 Coach application submitted via Elevait — review in the admin dashboard"
+            text: "📋 Coach application submitted via Elevait — approve with emoji reaction or review in admin dashboard"
           }
         ]
       }
