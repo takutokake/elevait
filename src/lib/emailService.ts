@@ -370,15 +370,15 @@ export async function sendCancellationEmails(data: CancellationEmailData) {
 
 /**
  * Send Slack notification when a new booking is created
- * Sends to: Slack channel via webhook
+ * Sends to: #booking-info-private via Bot Token
  */
 export async function sendSlackBookingNotification(data: BookingEmailData) {
   console.log('🔔 [Slack] sendSlackBookingNotification called with data:', data)
-  const webhookUrl = process.env.SLACK_WEBHOOK
-  console.log('🔔 [Slack] Webhook URL exists:', !!webhookUrl)
+  const botToken = process.env.SLACK_BOT_TOKEN
+  console.log('🔔 [Slack] Bot token exists:', !!botToken)
   
-  if (!webhookUrl) {
-    console.warn('SLACK_WEBHOOK not configured - skipping Slack notification')
+  if (!botToken) {
+    console.warn('SLACK_BOT_TOKEN not configured - skipping Slack notification')
     return null
   }
 
@@ -386,6 +386,7 @@ export async function sendSlackBookingNotification(data: BookingEmailData) {
   console.log('🔔 [Slack] Preparing message for:', { studentName, coachName, bookingDate, bookingTime })
 
   const message = {
+    channel: 'booking-info-private',
     blocks: [
       {
         type: "header",
@@ -444,21 +445,23 @@ export async function sendSlackBookingNotification(data: BookingEmailData) {
   }
 
   try {
-    console.log('🔔 [Slack] Sending POST request to webhook...')
-    const response = await fetch(webhookUrl, {
+    console.log('🔔 [Slack] Sending to #booking-info-private via chat.postMessage...')
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Bearer ${botToken}`,
+      },
       body: JSON.stringify(message)
     })
 
-    console.log('🔔 [Slack] Response status:', response.status)
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('🔔 [Slack] Error response:', errorText)
-      throw new Error(`Slack API error: ${response.status} - ${errorText}`)
+    const result = await response.json() as { ok: boolean; error?: string }
+    console.log('🔔 [Slack] Response:', result)
+    if (!result.ok) {
+      throw new Error(`Slack API error: ${result.error}`)
     }
 
-    console.log('✅ Slack booking notification sent successfully')
+    console.log('✅ Slack booking notification sent to #booking-info-private')
     return true
   } catch (error) {
     console.error('❌ Failed to send Slack booking notification:', error)
@@ -595,10 +598,10 @@ export async function sendSlackCoachApplicationNotification(data: {
   pricingModel: string
   applicationId?: string // Add applicationId parameter
 }) {
-  const webhookUrl = process.env.SLACK_WEBHOOK
+  const botToken = process.env.SLACK_BOT_TOKEN
 
-  if (!webhookUrl) {
-    console.warn('SLACK_WEBHOOK not configured - skipping Slack notification')
+  if (!botToken) {
+    console.warn('SLACK_BOT_TOKEN not configured - skipping Slack notification')
     return null
   }
 
@@ -618,6 +621,7 @@ export async function sendSlackCoachApplicationNotification(data: {
   const applicationId = data.applicationId || 'unknown'
 
   const message = {
+    channel: 'mentor-application',
     blocks: [
       {
         type: "header",
@@ -683,17 +687,21 @@ export async function sendSlackCoachApplicationNotification(data: {
   }
 
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Bearer ${botToken}`,
+      },
       body: JSON.stringify(message)
     })
 
-    if (!response.ok) {
-      throw new Error(`Slack API error: ${response.status}`)
+    const result = await response.json() as { ok: boolean; error?: string }
+    if (!result.ok) {
+      throw new Error(`Slack API error: ${result.error}`)
     }
 
-    console.log('✅ Slack coach application notification sent')
+    console.log('✅ Slack coach application notification sent to #mentor-application')
     return true
   } catch (error) {
     console.error('❌ Failed to send Slack coach application notification:', error)
