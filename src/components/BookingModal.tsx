@@ -83,7 +83,6 @@ export default function BookingModal({
   const defaultDuration = selectedSessionType === 'paid' ? paidDuration : freeDuration
   const [selectedDuration, setSelectedDuration] = useState<number>(defaultDuration)
   const [formData, setFormData] = useState({
-    email: '',
     phone: '',
     notes: '',
   })
@@ -292,7 +291,6 @@ export default function BookingModal({
             slotId: slot.id,
             bookingStartTime: selectedStartTime.toISOString(),
             bookingEndTime: selectedEndTime.toISOString(),
-            learnerEmail: formData.email,
             learnerPhone: formData.phone,
             sessionNotes: formData.notes,
             isFreeSession: true,
@@ -331,7 +329,6 @@ export default function BookingModal({
             slotId: slot.id,
             bookingStartTime: selectedStartTime.toISOString(),
             bookingEndTime: selectedEndTime.toISOString(),
-            learnerEmail: formData.email,
             learnerPhone: formData.phone,
             sessionNotes: formData.notes,
             timezone: getUserTimezone(),
@@ -642,16 +639,6 @@ export default function BookingModal({
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="your@email.com"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium mb-1">Phone (optional)</label>
                   <input
                     type="tel"
@@ -674,7 +661,7 @@ export default function BookingModal({
               </div>
               <Button
                 onClick={() => setStep('confirm')}
-                disabled={!formData.email}
+                disabled={false}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white"
               >
                 Continue to Confirmation
@@ -692,10 +679,6 @@ export default function BookingModal({
                 </Button>
               </div>
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Coach</p>
-                  <p className="font-semibold">{coachName}</p>
-                </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Date & Time</p>
                   <p className="font-semibold">
@@ -723,10 +706,6 @@ export default function BookingModal({
                   ) : (
                     <p className="text-xl font-bold text-blue-600">Contact for pricing</p>
                   )}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
-                  <p className="font-semibold">{formData.email}</p>
                 </div>
               </div>
               {isFreeSession && (

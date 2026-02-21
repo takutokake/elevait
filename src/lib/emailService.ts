@@ -53,7 +53,7 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
   const studentEmail_promise = resend.emails.send({
     from: 'Elevait <bookings@elevait.space>',
     to: studentEmail,
-    subject: 'Booking Request Submitted - Awaiting Coach Approval',
+    subject: 'Booking Confirmed!',
     replyTo: 'tryelevait@gmail.com',
     html: `
       <!DOCTYPE html>
@@ -74,11 +74,11 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Booking Request Submitted!</h1>
+              <h1>🎉 Booking Confirmed!</h1>
             </div>
             <div class="content">
               <p>Hi <strong>${studentName}</strong>,</p>
-              <p>Your booking request has been submitted and is awaiting approval from your coach.</p>
+              <p>Your booking has been confirmed!</p>
               
               <div class="info-box">
                 <h3>📅 Session Details</h3>
@@ -91,8 +91,8 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
 
               <p><strong>What happens next?</strong></p>
               <ul>
-                <li>Your coach will review your booking request</li>
-                <li>You'll receive a google calendar once booking is verified with meeting details</li>
+                <li>You'll receive a google calendar invite with meeting details</li>
+                <li>Your coach will be ready to meet you at the scheduled time</li>
               </ul>
 
               <p style="text-align: center;">
@@ -116,7 +116,7 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
     coachEmail_promise = resend.emails.send({
       from: 'Elevait <bookings@elevait.space>',
       to: coachEmail,
-      subject: 'New Booking Request - Action Required',
+      subject: 'New Booking Confirmed',
       replyTo: 'tryelevait@gmail.com',
     html: `
       <!DOCTYPE html>
@@ -139,11 +139,11 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
         <body>
           <div class="container">
             <div class="header">
-              <h1>📬 New Booking Request</h1>
+              <h1>📬 New Booking Confirmed</h1>
             </div>
             <div class="content">
               <p>Hi <strong>${coachName}</strong>,</p>
-              <p>You have a new booking request from a student!</p>
+              <p>You have a new confirmed booking from a student!</p>
               
               <div class="info-box">
                 <h3>📅 Session Details</h3>
@@ -155,12 +155,9 @@ export async function sendBookingRequestEmails(data: BookingEmailData) {
                 ${sessionNotes ? `<div class="info-row"><span class="label">Session Notes:</span> ${sessionNotes}</div>` : ''}
               </div>
 
-              <div class="alert">
-                <strong>⏰ Action Required:</strong> Please review and respond to this booking request as soon as possible.
-              </div>
 
               <p style="text-align: center;">
-                <a href="https://elevait.space/mentor/sessions" class="button">Approve Booking</a>
+                <a href="https://elevait.space/mentor/sessions" class="button">View Booking</a>
                 <a href="https://elevait.space/mentor/sessions" class="button button-secondary">View Details</a>
               </p>
 

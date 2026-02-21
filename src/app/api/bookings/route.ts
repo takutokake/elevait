@@ -325,7 +325,7 @@ export async function POST(request: NextRequest) {
       
       const emailData = {
         studentName: learnerProfile?.full_name || 'Student',
-        studentEmail: booking.learner_email,
+        studentEmail: learnerProfile?.email || '',
         coachName: mentorProfile?.full_name || 'Coach',
         coachEmail: mentorProfile?.email || '',
         bookingDate: startTime.toLocaleDateString('en-US', { 
