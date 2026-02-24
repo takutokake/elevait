@@ -18,6 +18,8 @@ interface Booking {
   cancellation_reason?: string
   cancelled_at?: string
   cancelled_by?: string
+  google_meet_link?: string
+  google_calendar_event_id?: string
   created_at: string
   updated_at: string
 }
@@ -175,6 +177,19 @@ export default function StudentSessions() {
                     <p className="text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
                       Notes: {booking.session_notes}
                     </p>
+                  )}
+                  {booking.google_meet_link && !isCancelled && (
+                    <a
+                      href={booking.google_meet_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      Join Google Meet
+                    </a>
                   )}
                   {isCancelled && booking.cancellation_reason && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-2 p-2 bg-white dark:bg-gray-800 rounded">

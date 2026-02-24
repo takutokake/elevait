@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import posthog from 'posthog-js'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { getFullScopeString } from '@/lib/googleOAuthConfig'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 
@@ -136,6 +137,12 @@ export default function SignUpPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: getFullScopeString(),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+            include_granted_scopes: 'true',
+          },
         },
       })
     } catch (err) {

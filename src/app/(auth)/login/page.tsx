@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import posthog from 'posthog-js'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { getFullScopeString } from '@/lib/googleOAuthConfig'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 
@@ -93,6 +94,12 @@ function LoginForm() {
         provider: 'google',
         options: {
           redirectTo: callbackUrl,
+          scopes: getFullScopeString(),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+            include_granted_scopes: 'true',
+          },
         },
       })
     } catch (err) {

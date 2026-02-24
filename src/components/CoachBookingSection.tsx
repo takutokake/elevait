@@ -155,7 +155,7 @@ export default function CoachBookingSection({
 
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} style={{ zIndex: 9999, marginTop: '60px' }} />
       
       {/* No availability message - positioned clearly below the booking section */}
       {hasCheckedAvailability && noAvailability && (

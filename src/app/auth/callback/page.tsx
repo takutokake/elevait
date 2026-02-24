@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { storeOAuthTokens } from '@/lib/oauth-handler'
 
 function AuthCallbackContent() {
   const [loading, setLoading] = useState(true)
@@ -15,6 +16,10 @@ function AuthCallbackContent() {
       try {
         console.log('[Callback] Starting auth callback...', returnUrl ? `returnUrl: ${returnUrl}` : '')
         const supabase = getSupabaseBrowserClient()
+        
+        // Store OAuth tokens if this was a Google sign-in
+        const { success, error: oauthError } = await storeOAuthTokens()
+        console.log('[Callback] OAuth token storage:', success ? 'Success' : `Failed: ${oauthError}`)
         
         // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser()

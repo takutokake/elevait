@@ -71,7 +71,7 @@ export default function StudentSaved() {
 
   return (
     <div className="p-8 space-y-8">
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} style={{ zIndex: 9999, marginTop: '60px' }} />
       
       <div>
         <h1 className="text-3xl font-black tracking-tight text-[#333333] dark:text-white mb-2">

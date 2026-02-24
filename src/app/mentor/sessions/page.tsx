@@ -20,6 +20,8 @@ interface Booking {
   learner_email: string
   learner_phone?: string
   session_notes?: string
+  google_meet_link?: string
+  google_calendar_event_id?: string
   created_at: string
   updated_at: string
 }
@@ -311,6 +313,19 @@ export default function MentorSessions() {
                       Notes: {booking.session_notes}
                     </p>
                   )}
+                  {booking.google_meet_link && booking.status === 'confirmed' && (
+                    <a
+                      href={booking.google_meet_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      Join Google Meet
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -347,7 +362,7 @@ export default function MentorSessions() {
 
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} style={{ zIndex: 9999, marginTop: '60px' }} />
       
       <div className="p-8 space-y-8">
         <div>

@@ -10,6 +10,7 @@ interface Booking {
   booking_end_time: string
   status: string
   session_notes?: string
+  google_meet_link?: string
 }
 
 interface UserData {
@@ -251,8 +252,20 @@ export default function StudentDashboard() {
                         })}
                       </p>
                     </div>
-                    <div className="text-sm text-[#0ea5e9] font-medium">
-                      {booking.status}
+                    <div className="flex items-center gap-2">
+                      {booking.google_meet_link && (
+                        <a
+                          href={booking.google_meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                        >
+                          Join Meet
+                        </a>
+                      )}
+                      <span className="text-sm text-[#0ea5e9] font-medium">
+                        {booking.status}
+                      </span>
                     </div>
                   </div>
                 )

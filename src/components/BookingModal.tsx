@@ -14,6 +14,8 @@ import {
   getUserTimezone,
   getTimezoneFriendlyName,
 } from '@/lib/dateUtils'
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { getFullScopeString } from '@/lib/googleOAuthConfig'
 
 /**
  * SECURITY FIX: Decode HTML entities in timezone strings
@@ -309,7 +311,36 @@ export default function BookingModal({
             booking_id: data.bookingId,
           })
 
-          toast.success('🎉 Booking confirmed! Check your email for details.')
+          // Try to create Google Calendar event with Meet link
+          try {
+            console.log('[BookingModal] Attempting to create calendar event for booking:', data.bookingId)
+            const calendarResponse = await fetch('/api/calendar', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                bookingId: data.bookingId,
+              }),
+            })
+
+            const calendarData = await calendarResponse.json()
+
+            if (calendarResponse.ok && calendarData.meetLink) {
+              console.log('[BookingModal] Calendar event created with Meet link:', calendarData.meetLink)
+              toast.success('🎉 Booking confirmed with Google Meet link! Check your email for details.')
+            } else if (calendarData.needsAuth) {
+              console.log('[BookingModal] User needs to authenticate with Google Calendar')
+              toast.success('🎉 Booking confirmed! Connect Google Calendar for a Meet link.')
+            } else {
+              console.log('[BookingModal] Calendar event creation failed:', calendarData)
+              toast.success('🎉 Booking confirmed! Check your email for details.')
+            }
+          } catch (calendarError) {
+            console.error('[BookingModal] Calendar integration error:', calendarError)
+            toast.success('🎉 Booking confirmed! Check your email for details.')
+          }
+
           onBookingComplete()
           onClose()
         } else {

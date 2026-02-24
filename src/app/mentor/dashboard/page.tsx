@@ -10,6 +10,7 @@ interface Booking {
   booking_end_time: string
   status: string
   session_notes?: string
+  google_meet_link?: string
 }
 
 interface MentorData {

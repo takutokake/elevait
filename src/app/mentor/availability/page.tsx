@@ -53,7 +53,7 @@ export default function MentorAvailability() {
 
   return (
     <div className="p-6 space-y-6">
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} style={{ zIndex: 9999, marginTop: '60px' }} />
       
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-[#333333] dark:text-white mb-1">
