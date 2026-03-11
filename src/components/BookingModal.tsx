@@ -311,33 +311,15 @@ export default function BookingModal({
             booking_id: data.bookingId,
           })
 
-          // Try to create Google Calendar event with Meet link
-          try {
-            console.log('[BookingModal] Attempting to create calendar event for booking:', data.bookingId)
-            const calendarResponse = await fetch('/api/calendar', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                bookingId: data.bookingId,
-              }),
-            })
-
-            const calendarData = await calendarResponse.json()
-
-            if (calendarResponse.ok && calendarData.meetLink) {
-              console.log('[BookingModal] Calendar event created with Meet link:', calendarData.meetLink)
-              toast.success('🎉 Booking confirmed with Google Meet link! Check your email for details.')
-            } else if (calendarData.needsAuth) {
-              console.log('[BookingModal] User needs to authenticate with Google Calendar')
-              toast.success('🎉 Booking confirmed! Connect Google Calendar for a Meet link.')
-            } else {
-              console.log('[BookingModal] Calendar event creation failed:', calendarData)
-              toast.success('🎉 Booking confirmed! Check your email for details.')
-            }
-          } catch (calendarError) {
-            console.error('[BookingModal] Calendar integration error:', calendarError)
+          // Calendar event is now created server-side
+          if (data.calendarEventCreated && data.meetLink) {
+            console.log('[BookingModal] Calendar event created with Meet link:', data.meetLink)
+            toast.success('🎉 Booking confirmed with Google Meet link! Check your email for details.')
+          } else if (data.calendarEventCreated) {
+            console.log('[BookingModal] Calendar event created without Meet link')
+            toast.success('🎉 Booking confirmed! Check your email for details.')
+          } else {
+            console.log('[BookingModal] Calendar event not created (user may need to connect Google Calendar)')
             toast.success('🎉 Booking confirmed! Check your email for details.')
           }
 

@@ -12,19 +12,31 @@ export async function POST(request: NextRequest) {
     const { user } = await getSessionUser()
 
     if (!user) {
+      console.error('[Calendar API] Unauthorized access attempt')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Parse request body
-    const body = await request.json()
+    // Parse request body with error handling
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error('[Calendar API] Failed to parse request body:', parseError)
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+
     const { bookingId } = body
 
-    if (!bookingId) {
+    if (!bookingId || typeof bookingId !== 'string') {
+      console.error('[Calendar API] Invalid bookingId:', bookingId)
       return NextResponse.json(
-        { error: 'bookingId is required' },
+        { error: 'Valid bookingId is required' },
         { status: 400 }
       )
     }
@@ -93,15 +105,103 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if token is expired
+    // Check if token is expired and refresh if needed
     const expiresAt = new Date(oauthTokens.expires_at)
+    let accessToken = oauthTokens.access_token
+    
     if (expiresAt < new Date()) {
-      console.log('[Calendar API] Token is expired')
-      // TODO: Implement token refresh using refresh_token
-      return NextResponse.json(
-        { error: 'Google OAuth token expired', needsAuth: true },
-        { status: 401 }
-      )
+      console.log('[Calendar API] Token is expired, attempting refresh')
+      
+      if (!oauthTokens.refresh_token) {
+        console.log('[Calendar API] No refresh token available')
+        return NextResponse.json(
+          { error: 'Google OAuth token expired and no refresh token available', needsAuth: true },
+          { status: 401 }
+        )
+      }
+
+      // Validate environment variables
+      if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        console.error('[Calendar API] Missing Google OAuth credentials in environment variables')
+        return NextResponse.json(
+          { error: 'Server configuration error: Missing OAuth credentials' },
+          { status: 500 }
+        )
+      }
+
+      // Refresh the access token
+      try {
+        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            refresh_token: oauthTokens.refresh_token,
+            grant_type: 'refresh_token',
+          }),
+        })
+
+        if (!refreshResponse.ok) {
+          let errorData
+          try {
+            errorData = await refreshResponse.json()
+          } catch {
+            errorData = { message: refreshResponse.statusText }
+          }
+          console.error('[Calendar API] Token refresh failed:', {
+            status: refreshResponse.status,
+            error: errorData
+          })
+          return NextResponse.json(
+            { error: 'Failed to refresh Google OAuth token', needsAuth: true },
+            { status: 401 }
+          )
+        }
+
+        const refreshData = await refreshResponse.json()
+        
+        if (!refreshData.access_token) {
+          console.error('[Calendar API] Token refresh response missing access_token:', refreshData)
+          return NextResponse.json(
+            { error: 'Invalid token refresh response', needsAuth: true },
+            { status: 401 }
+          )
+        }
+        accessToken = refreshData.access_token
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in * 1000))
+
+        console.log('[Calendar API] Token refreshed successfully')
+
+        // Update the token in the database
+        const { error: updateError } = await supabase
+          .from('user_oauth_tokens')
+          .update({
+            access_token: accessToken,
+            expires_at: newExpiresAt.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('provider', 'google')
+        
+        if (updateError) {
+          console.error('[Calendar API] Failed to update token in database:', updateError)
+          // Continue anyway - we have the token in memory
+        }
+
+      } catch (refreshError) {
+        console.error('[Calendar API] Error refreshing token:', {
+          error: refreshError,
+          message: refreshError instanceof Error ? refreshError.message : String(refreshError),
+          stack: refreshError instanceof Error ? refreshError.stack : undefined
+        })
+        return NextResponse.json(
+          { error: 'Failed to refresh Google OAuth token', needsAuth: true },
+          { status: 401 }
+        )
+      }
     }
 
     console.log('[Calendar API] Creating Google Calendar event')
@@ -140,22 +240,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Google Calendar API to create event
-    const response = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${oauthTokens.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(calendarEventData),
-      }
-    )
+    let response
+    try {
+      response = await fetch(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(calendarEventData),
+        }
+      )
+    } catch (fetchError) {
+      console.error('[Calendar API] Network error calling Google Calendar API:', fetchError)
+      return NextResponse.json(
+        { error: 'Network error connecting to Google Calendar' },
+        { status: 503 }
+      )
+    }
 
-    const calendarEvent = await response.json()
+    let calendarEvent
+    try {
+      calendarEvent = await response.json()
+    } catch (parseError) {
+      console.error('[Calendar API] Failed to parse Google Calendar response:', parseError)
+      return NextResponse.json(
+        { error: 'Invalid response from Google Calendar' },
+        { status: 502 }
+      )
+    }
 
     if (!response.ok) {
-      console.error('[Calendar API] Google Calendar API error:', calendarEvent)
+      console.error('[Calendar API] Google Calendar API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: calendarEvent,
+        bookingId,
+        userId: user.id
+      })
       
       // Check if it's an auth error
       if (response.status === 401) {
@@ -165,9 +289,33 @@ export async function POST(request: NextRequest) {
         )
       }
       
+      // Check for permission errors
+      if (response.status === 403) {
+        return NextResponse.json(
+          { error: 'Permission denied - missing calendar scopes', needsAuth: true },
+          { status: 403 }
+        )
+      }
+      
+      // Check for rate limiting
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'Google Calendar API rate limit exceeded' },
+          { status: 429 }
+        )
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to create calendar event', details: calendarEvent },
+        { error: 'Failed to create calendar event', details: calendarEvent?.error?.message || calendarEvent },
         { status: response.status }
+      )
+    }
+
+    if (!calendarEvent?.id) {
+      console.error('[Calendar API] Calendar event created but missing ID:', calendarEvent)
+      return NextResponse.json(
+        { error: 'Calendar event created but response is invalid' },
+        { status: 500 }
       )
     }
 
@@ -201,9 +349,14 @@ export async function POST(request: NextRequest) {
       success: true,
     })
   } catch (error) {
-    console.error('[Calendar API] Internal server error:', error)
+    console.error('[Calendar API] Internal server error:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    })
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

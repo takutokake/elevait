@@ -7,6 +7,7 @@ import { checkRateLimit, bookingRateLimiter, readRateLimiter } from '@/lib/rateL
 import { createBookingSchema, updateBookingSchema } from '@/lib/validationSchemas'
 import { sanitizeEmail, sanitizePhone, sanitizeText, sanitizeUuid } from '@/lib/sanitization'
 import { createRateLimitResponse, handleValidationError, createSafeErrorResponse, sanitizeDatabaseError } from '@/lib/securityUtils'
+import { createCalendarEvent } from '@/lib/calendar-service'
 import { ZodError } from 'zod'
 
 /**
@@ -376,7 +377,68 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ booking, bookingId: data })
+    // Create Google Calendar event with Meet link (don't block on this)
+    let calendarEventCreated = false
+    let meetLink: string | undefined
+    try {
+      console.log('[Booking] Attempting to create Google Calendar event for booking:', data)
+      
+      // Validate we have required data for calendar event
+      if (!mentorProfile?.email || !learnerProfile?.email) {
+        console.warn('[Booking] Missing email addresses for calendar event:', {
+          mentorEmail: mentorProfile?.email,
+          learnerEmail: learnerProfile?.email
+        })
+      } else if (!booking.booking_start_time || !booking.booking_end_time) {
+        console.warn('[Booking] Missing booking times for calendar event:', {
+          startTime: booking.booking_start_time,
+          endTime: booking.booking_end_time
+        })
+      } else {
+        const calendarResult = await createCalendarEvent(supabase, user.id, {
+          bookingId: data,
+          mentorEmail: mentorProfile.email,
+          mentorName: mentorProfile.full_name || 'Coach',
+          learnerEmail: learnerProfile.email,
+          learnerName: learnerProfile.full_name || 'Student',
+          startTime: booking.booking_start_time,
+          endTime: booking.booking_end_time,
+          timezone: booking.timezone || 'UTC',
+          sessionNotes: booking.session_notes || undefined,
+        })
+
+        if (calendarResult.success) {
+          console.log('[Booking] Calendar event created successfully:', {
+            eventId: calendarResult.eventId,
+            meetLink: calendarResult.meetLink,
+            bookingId: data
+          })
+          calendarEventCreated = true
+          meetLink = calendarResult.meetLink
+        } else {
+          console.warn('[Booking] Calendar event creation failed:', {
+            error: calendarResult.error,
+            needsAuth: calendarResult.needsAuth,
+            bookingId: data
+          })
+        }
+      }
+    } catch (calendarError) {
+      console.error('[Booking] Calendar integration error:', {
+        error: calendarError,
+        message: calendarError instanceof Error ? calendarError.message : String(calendarError),
+        stack: calendarError instanceof Error ? calendarError.stack : undefined,
+        bookingId: data
+      })
+      // Don't fail the booking if calendar creation fails
+    }
+
+    return NextResponse.json({ 
+      booking, 
+      bookingId: data,
+      calendarEventCreated,
+      meetLink,
+    })
   } catch (error) {
     return createSafeErrorResponse(error, 'Failed to create booking', 500)
   }
