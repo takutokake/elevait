@@ -74,38 +74,45 @@ export async function GET(request: NextRequest) {
       coachCompanyNames = await getCoachCompanyNames(supabase)
     }
 
-    // Fetch all matching jobs (no pagination yet — we deduplicate & re-rank first)
-    let query = supabase
-      .from('pm_jobs')
-      .select('*')
-      .limit(5000)
+    // Fetch ALL matching jobs using paginated queries to bypass Supabase 1000-row default
+    const PAGE_SIZE = 1000
+    let allData: any[] = []
+    let from = 0
+    let hasMore = true
 
-    // Filters (server-side)
-    if (roleType && (roleType === 'new_grad' || roleType === 'internship')) {
-      query = query.eq('role_type', roleType)
+    while (hasMore) {
+      let query = supabase
+        .from('pm_jobs')
+        .select('*')
+        .range(from, from + PAGE_SIZE - 1)
+
+      if (roleType && (roleType === 'new_grad' || roleType === 'internship')) {
+        query = query.eq('role_type', roleType)
+      }
+      if (workModel) {
+        query = query.eq('work_model', workModel)
+      }
+      if (search) {
+        query = query.or(`company.ilike.%${search}%,job_title.ilike.%${search}%,location.ilike.%${search}%`)
+      }
+      query = query
+        .order('date_posted_parsed', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('[Jobs API] Query error:', error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      const batch = data || []
+      allData = allData.concat(batch)
+      hasMore = batch.length === PAGE_SIZE
+      from += PAGE_SIZE
     }
 
-    if (workModel) {
-      query = query.eq('work_model', workModel)
-    }
-
-    if (search) {
-      query = query.or(`company.ilike.%${search}%,job_title.ilike.%${search}%,location.ilike.%${search}%`)
-    }
-
-    // Initial sort from DB (helps dedup pick the best row)
-    query = query
-      .order('date_posted_parsed', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('[Jobs API] Query error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    let rows = (data || []) as JobRow[]
+    let rows = allData as JobRow[]
 
     // Re-validate is_top_company and company_rank using current TOP_COMPANIES list
     rows = rows.map(job => {
