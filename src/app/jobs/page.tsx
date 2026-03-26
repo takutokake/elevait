@@ -34,7 +34,7 @@ interface CoachCompanyInfo {
   types: ('current' | 'interviewed' | 'offer' | 'coached')[]
 }
 
-const SAVED_KEY = 'elevait-saved-jobs'
+// Removed localStorage key - now using Supabase database
 const WORK_MODEL_OPTIONS = ['', 'Remote', 'On Site', 'Hybrid']
 const SORT_OPTIONS = [
   { value: 'relevance', label: 'Top Companies First' },
@@ -230,11 +230,15 @@ export default function JobsPage() {
   const [alertsOpen, setAlertsOpen] = useState(false)
 
   // ── Filter updaters: always reset page to 1 before re-fetch ──
-  const updateRoleType = (v: string) => { setRoleType(v); setPage(1) }
+  const updateRoleType = (v: string) => { setRoleType(v); setSavedFilter(false); setPage(1) }
   const updateWorkModel = (v: string) => { setWorkModel(v); setPage(1) }
   const updateTopOnly = (v: boolean) => { setTopOnly(v); setPage(1) }
   const updateCoachOnly = (v: boolean) => { setCoachOnly(v); setPage(1) }
   const updateSortBy = (v: string) => { setSortBy(v); setPage(1) }
+  const toggleSavedFilter = () => {
+    setSavedFilter(prev => !prev)
+    setPage(1)
+  }
 
   const clearFilters = () => {
     setSearch('')
@@ -247,22 +251,58 @@ export default function JobsPage() {
     setPage(1)
   }
 
-  // Hydrate saved jobs from localStorage
+  // Fetch saved jobs from database on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SAVED_KEY)
-      if (raw) setSavedIds(new Set(JSON.parse(raw)))
-    } catch { /* ignore */ }
+    const fetchSavedJobs = async () => {
+      try {
+        const res = await fetch('/api/saved-jobs')
+        if (res.ok) {
+          const data = await res.json()
+          setSavedIds(new Set(data.savedJobs || []))
+        }
+      } catch (err) {
+        console.error('Error fetching saved jobs:', err)
+      }
+    }
+    fetchSavedJobs()
   }, [])
 
-  const toggleSave = useCallback((id: string) => {
+  const toggleSave = useCallback(async (id: string) => {
+    const isSaved = savedIds.has(id)
+    
+    // Optimistic update
     setSavedIds(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
-      localStorage.setItem(SAVED_KEY, JSON.stringify([...next]))
       return next
     })
-  }, [])
+
+    try {
+      if (isSaved) {
+        // Unsave
+        const res = await fetch(`/api/saved-jobs?jobId=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) throw new Error('Failed to unsave job')
+      } else {
+        // Save
+        const res = await fetch('/api/saved-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId: id }),
+        })
+        if (!res.ok) throw new Error('Failed to save job')
+      }
+    } catch (err) {
+      console.error('Error toggling save:', err)
+      // Revert optimistic update on error
+      setSavedIds(prev => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
+  }, [savedIds])
 
   // Debounce search — reset page inside the debounce callback
   useEffect(() => {
@@ -273,8 +313,33 @@ export default function JobsPage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  // ── Fetch jobs: depends on filters + page ──
+  // ── Fetch jobs: depends on filters + page (skip if savedFilter is active) ──
   const fetchJobs = useCallback(async () => {
+    if (savedFilter) {
+      // When viewing saved jobs, fetch all jobs without role_type filter to get complete saved list
+      setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        params.set('sort', sortBy)
+        params.set('page', '1')
+        params.set('limit', '5000') // Fetch large set to get all saved jobs
+        
+        const res = await fetch(`/api/jobs?${params.toString()}`)
+        if (!res.ok) throw new Error('Failed to fetch jobs')
+        
+        const data: JobsResponse = await res.json()
+        setJobs(data.jobs)
+        setTotal(data.total)
+        setTotalPages(1)
+        setIsEmpty(false)
+      } catch (err) {
+        console.error('Error fetching jobs:', err)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -300,7 +365,7 @@ export default function JobsPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, roleType, workModel, topOnly, coachOnly, sortBy, page])
+  }, [debouncedSearch, roleType, workModel, topOnly, coachOnly, sortBy, page, savedFilter])
 
   useEffect(() => {
     fetchJobs()
@@ -326,11 +391,20 @@ export default function JobsPage() {
     return null
   }, [coachCompanies])
 
-  // Client-side saved filter on top of server-side filtered jobs
+  // Client-side saved filter - when active, show only saved jobs
   const displayedJobs = useMemo(() => {
-    if (savedFilter) return jobs.filter(j => savedIds.has(j.id))
+    if (savedFilter) {
+      return jobs.filter(j => savedIds.has(j.id))
+    }
     return jobs
   }, [jobs, savedFilter, savedIds])
+
+  // Update total when displaying saved jobs
+  useEffect(() => {
+    if (savedFilter) {
+      setTotal(displayedJobs.length)
+    }
+  }, [savedFilter, displayedJobs])
 
   // Compute unique companies on current page that have coaches
   const coachCompaniesOnPage = useMemo(() => {
@@ -348,8 +422,8 @@ export default function JobsPage() {
 
   return (
     <Layout variant="landing">
-      <div className="min-h-[80vh] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="max-w-4xl mx-auto overflow-hidden">
+      <div className="min-h-[80vh] py-8 sm:py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 overflow-hidden">
           
           {/* Header */}
           <div className="text-center mb-8 sm:mb-10">
@@ -379,7 +453,7 @@ export default function JobsPage() {
           {/* Filters & Controls */}
           {!isEmpty && (
             <>
-              <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 shadow-sm">
+              <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 shadow-sm w-full max-w-full">
                 {/* Search */}
                 <div className="relative mb-4">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,8 +474,11 @@ export default function JobsPage() {
                   <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <button
                       onClick={() => updateRoleType('internship')}
+                      disabled={savedFilter}
                       className={`px-3 py-2 text-sm font-medium transition-colors ${
-                        roleType === 'internship'
+                        savedFilter
+                          ? 'opacity-50 cursor-not-allowed bg-white dark:bg-gray-800 text-[#333333] dark:text-[#F5F5F5]'
+                          : roleType === 'internship'
                           ? 'bg-[#0ea5e9] text-white'
                           : 'bg-white dark:bg-gray-800 text-[#333333] dark:text-[#F5F5F5] hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
@@ -410,8 +487,11 @@ export default function JobsPage() {
                     </button>
                     <button
                       onClick={() => updateRoleType('new_grad')}
+                      disabled={savedFilter}
                       className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
-                        roleType === 'new_grad'
+                        savedFilter
+                          ? 'opacity-50 cursor-not-allowed bg-white dark:bg-gray-800 text-[#333333] dark:text-[#F5F5F5]'
+                          : roleType === 'new_grad'
                           ? 'bg-[#0ea5e9] text-white'
                           : 'bg-white dark:bg-gray-800 text-[#333333] dark:text-[#F5F5F5] hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
@@ -472,37 +552,30 @@ export default function JobsPage() {
                 </div>
 
                 {/* Results count + Saved pill + Get alerts + Clear */}
-                <div className="mt-3 flex items-center gap-3 text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60">
-                  <span>{total.toLocaleString()} {total === 1 ? 'role' : 'roles'} found</span>
-                  {savedIds.size > 0 && (
-                    <button
-                      onClick={() => setSavedFilter(!savedFilter)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        savedFilter
-                          ? 'border-[#0ea5e9] bg-[#0ea5e9]/10 text-[#0ea5e9]'
-                          : 'border-gray-200 dark:border-gray-700 text-[#333333]/60 dark:text-[#F5F5F5]/60 hover:border-[#0ea5e9]/50'
-                      }`}
-                    >
-                      <svg className="w-3 h-3" fill={savedFilter ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                      Saved &middot; {savedIds.size}
-                    </button>
-                  )}
-                  <div className="ml-auto flex items-center gap-3">
-                    <button
-                      onClick={() => setAlertsOpen(true)}
-                      className="inline-flex items-center gap-1 text-[#0ea5e9] hover:text-[#0284c7] font-medium transition-colors text-xs"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                      </svg>
-                      Get alerts
-                    </button>
+                <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm text-[#333333]/60 dark:text-[#F5F5F5]/60">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>{total.toLocaleString()} {total === 1 ? 'role' : 'roles'} found</span>
+                    {savedIds.size > 0 && (
+                      <button
+                        onClick={toggleSavedFilter}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          savedFilter
+                            ? 'border-[#0ea5e9] bg-[#0ea5e9]/10 text-[#0ea5e9]'
+                            : 'border-gray-200 dark:border-gray-700 text-[#333333]/60 dark:text-[#F5F5F5]/60 hover:border-[#0ea5e9]/50'
+                        }`}
+                      >
+                        <svg className="w-3 h-3" fill={savedFilter ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                        Saved &middot; {savedIds.size}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 sm:ml-auto">
                     {hasActiveFilters && (
                       <button
                         onClick={clearFilters}
-                        className="text-[#0ea5e9] hover:text-[#0ea5e9]/80 font-medium transition-colors"
+                        className="text-[#0ea5e9] hover:text-[#0ea5e9]/80 font-medium transition-colors text-xs whitespace-nowrap"
                       >
                         Clear all
                       </button>
@@ -567,7 +640,7 @@ export default function JobsPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid gap-3">
+                <div className="grid gap-3 w-full">
                   {displayedJobs.map((job) => (
                     <JobCard key={job.id} job={job} coachMatch={findCoachMatch(job.company)} onSelect={setSelectedJob} saved={savedIds.has(job.id)} onToggleSave={toggleSave} />
                   ))}
@@ -644,7 +717,7 @@ function JobCard({ job, coachMatch, onSelect, saved, onToggleSave }: {
   return (
     <div
       onClick={() => onSelect(job)}
-      className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 hover:border-[#0ea5e9]/50 hover:shadow-md transition-all cursor-pointer max-w-full"
+      className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 hover:border-[#0ea5e9]/50 hover:shadow-md transition-all cursor-pointer w-full max-w-full"
     >
       <div className="flex items-start gap-3">
         {/* Company Logo */}
@@ -788,12 +861,21 @@ function JobDetailsModal({ job, coachMatch, onClose, saved, onToggleSave }: {
 
         <div className="p-6 sm:p-7">
           {/* Company logo + name + bookmark */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-4">
             <CompanyLogo company={job.company} companyUrl={job.company_url} isTop={job.is_top_company} size={44} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{job.company}</p>
                 {recent && <span className="w-[7px] h-[7px] rounded-full bg-[#3B6D11] flex-shrink-0" title="Posted recently" />}
+                <button
+                  onClick={() => onToggleSave(job.id)}
+                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-1"
+                  aria-label={saved ? 'Unsave job' : 'Save job'}
+                >
+                  <svg className={`w-4 h-4 ${saved ? 'text-[#0ea5e9]' : 'text-gray-400'}`} fill={saved ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                </button>
               </div>
               {job.company_url && (
                 <a href={job.company_url} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-500 hover:text-violet-600 hover:underline">
@@ -801,15 +883,6 @@ function JobDetailsModal({ job, coachMatch, onClose, saved, onToggleSave }: {
                 </a>
               )}
             </div>
-            <button
-              onClick={() => onToggleSave(job.id)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-              aria-label={saved ? 'Unsave job' : 'Save job'}
-            >
-              <svg className={`w-5 h-5 ${saved ? 'text-[#0ea5e9]' : 'text-gray-400'}`} fill={saved ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
-            </button>
           </div>
 
           {/* Title */}
