@@ -431,8 +431,8 @@ export default function JobsPage() {
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-[#333333]/80 dark:text-[#F5F5F5]/80">Updated regularly with new roles</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[#333333] dark:text-white mb-3">
-              Product Management <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0ea5e9] to-[#8b5cf6]">Job Board</span>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mb-3">
+              <span className="text-[#2563eb] dark:text-[#3b82f6]">Product Management Job Board</span>
             </h1>
             <p className="text-base sm:text-lg text-[#333333]/70 dark:text-[#F5F5F5]/70 max-w-2xl mx-auto">
               Lightning-fast PM internships and new grad roles at top companies, always updated with the latest openings on the market.
@@ -696,117 +696,89 @@ export default function JobsPage() {
   )
 }
 
-// ─── Job Card Component ────────────────────────────────────────────
+// ─── Job Card Component (Completely Redesigned) ────────────────────────────────────────────
 
 function JobCard({ job, coachMatch, onSelect, saved, onToggleSave }: {
   job: Job; coachMatch: CoachCompanyInfo | null; onSelect: (job: Job) => void; saved: boolean; onToggleSave: (id: string) => void
 }) {
   const workModelColors: Record<string, string> = {
-    'Remote': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    'Hybrid': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    'On Site': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    'Remote': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+    'Hybrid': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+    'On Site': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800',
   }
 
   const roleTypeLabel = job.role_type === 'new_grad' ? 'New Grad' : 'Internship'
   const roleTypeColor = job.role_type === 'new_grad'
-    ? 'bg-[#8b5cf6]/10 text-[#8b5cf6]'
-    : 'bg-[#0ea5e9]/10 text-[#0ea5e9]'
+    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800'
+    : 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800'
 
   const recent = isRecentJob(job.date_posted_parsed)
 
   return (
     <div
       onClick={() => onSelect(job)}
-      className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 hover:border-[#0ea5e9]/50 hover:shadow-md transition-all cursor-pointer w-full max-w-full"
+      className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all cursor-pointer p-4 w-full"
     >
       <div className="flex items-start gap-3">
         {/* Company Logo */}
-        <CompanyLogo company={job.company} companyUrl={job.company_url} isTop={job.is_top_company} />
+        <div className="flex-shrink-0">
+          <CompanyLogo company={job.company} companyUrl={job.company_url} isTop={job.is_top_company} size={40} />
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm sm:text-base font-semibold text-[#333333] dark:text-white group-hover:text-[#0ea5e9] transition-colors truncate">
-                {job.job_title}
-              </h3>
-              <div className="flex items-center flex-wrap gap-1.5 mt-0.5">
-                <span className="text-xs sm:text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80 truncate">
-                  {job.company}
-                </span>
-                {job.is_top_company && (
-                  <span className="text-[11px] text-[#333333]/40 dark:text-[#F5F5F5]/40 flex-shrink-0">⭐ Top company</span>
-                )}
-              </div>
-            </div>
+          {/* Title */}
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-1 pr-16">
+            {job.job_title}
+          </h3>
+          
+          {/* Company name */}
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            {job.company}
+          </p>
 
-            {/* Bookmark + recent dot + arrow */}
-            <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-              {recent && (
-                <span className="w-[7px] h-[7px] rounded-full bg-[#3B6D11] flex-shrink-0" title="Posted recently" />
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleSave(job.id) }}
-                aria-label={saved ? 'Unsave job' : 'Save job'}
-                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <svg className={`w-4 h-4 ${saved ? 'text-[#0ea5e9]' : 'text-gray-400'}`} fill={saved ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </button>
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-[#0ea5e9] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Tags row */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleTypeColor}`}>
               {roleTypeLabel}
             </span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${workModelColors[job.work_model] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${workModelColors[job.work_model] || 'bg-gray-50 text-gray-600 dark:bg-gray-700/30 dark:text-gray-400'}`}>
               {job.work_model}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs text-[#333333]/50 dark:text-[#F5F5F5]/50 truncate max-w-[160px] sm:max-w-none">
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
               <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {job.location}
+              <span className="truncate max-w-[120px] sm:max-w-[200px]">{job.location}</span>
             </span>
           </div>
 
-          {/* Footer row: coach badge + date + apply */}
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex-1 min-w-0">
-              {coachMatch && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="hidden sm:inline">{coachMatch.count === 1 ? '1 coach' : `${coachMatch.count} coaches`}</span>
-                  <span className="sm:hidden">Coach</span>
-                </span>
-              )}
+          {/* Date posted - bottom right */}
+          {job.date_posted && (
+            <div className="text-xs text-gray-400 dark:text-gray-500">
+              {job.date_posted}
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {job.date_posted && (
-                <span className="text-xs text-[#333333]/40 dark:text-[#F5F5F5]/40">
-                  {job.date_posted}
-                </span>
-              )}
-              <a
-                href={getLinkedInSearchUrl(job.job_title, job.company)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors whitespace-nowrap"
-              >
-                Apply →
-              </a>
-            </div>
-          </div>
+          )}
+        </div>
+
+        {/* Right side: Recent dot, Bookmark, Arrow */}
+        <div className="flex items-start gap-1.5 flex-shrink-0">
+          {recent && (
+            <span className="w-2 h-2 rounded-full bg-green-600 dark:bg-green-400 mt-1.5 flex-shrink-0" title="Posted recently" />
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSave(job.id) }}
+            aria-label={saved ? 'Unsave job' : 'Save job'}
+            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <svg className={`w-4 h-4 ${saved ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} fill={saved ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+          <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </div>
@@ -940,6 +912,18 @@ function JobDetailsModal({ job, coachMatch, onClose, saved, onToggleSave }: {
                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
               </svg>
               Apply on LinkedIn
+            </a>
+            
+            <a
+              href={job.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition-colors text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              View Original
             </a>
 
             {coachMatch && coachMatch.count > 0 && (
