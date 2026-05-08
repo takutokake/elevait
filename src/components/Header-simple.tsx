@@ -78,7 +78,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
               if (profile?.role === 'mentor') {
                 router.push('/mentor/dashboard')
               } else {
-                router.push('/student/dashboard')
+                router.push('/student/dashboard?tab=pipeline')
               }
             }}
           >
@@ -102,7 +102,7 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
             onClick={async () => {
               const supabase = getSupabaseBrowserClient()
               await supabase.auth.signOut()
-              router.replace('/login')
+              router.replace('/')
             }}
           >
             Log out
@@ -133,14 +133,14 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
         </div>
         
         <nav className="hidden lg:flex items-center gap-8 justify-center flex-1">
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
+            Jobs
+          </Link>
           <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/coaches">
             Coaches
           </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/jobs">
-            Job Board
-          </Link>
-          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/blog">
-            Blog
+          <Link className="text-sm font-medium leading-normal text-[#64748B] dark:text-[#9CA3AF] transition-colors hover:text-[#0ea5e9]" href="/student/dashboard?tab=pipeline">
+            My Pipeline
           </Link>
         </nav>
         
@@ -177,14 +177,14 @@ export default function Header({ variant = "landing", user }: HeaderProps) {
       {mobileMenuOpen && (
         <div className="fixed top-[57px] left-0 right-0 mx-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg lg:hidden z-50">
           <nav className="flex flex-col p-4 gap-2">
+            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/jobs">
+              Jobs
+            </Link>
             <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/coaches">
               Coaches
             </Link>
-            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/jobs">
-              Job Board
-            </Link>
-            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/blog">
-              Blog
+            <Link className="px-4 py-2 text-[#333333] dark:text-[#F5F5F5] text-sm font-medium hover:text-[#0ea5e9] transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700" href="/student/dashboard?tab=pipeline">
+              My Pipeline
             </Link>
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               {isLoading ? (

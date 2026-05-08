@@ -47,7 +47,9 @@ export default function MentorSettings() {
     offersReferrals: false,
     hiredDate: '',
     // Interview experience
-    totalInterviews: 0
+    totalInterviews: 0,
+    // CRM
+    crmContextEnabled: false
   })
   const [newSuccessCompany, setNewSuccessCompany] = useState('')
   const [newOfferCompany, setNewOfferCompany] = useState('')
@@ -207,7 +209,9 @@ export default function MentorSettings() {
           offersReferrals: mentor.offers_referrals || false,
           hiredDate: mentor.hired_date || '',
           // Interview experience
-          totalInterviews: mentor.total_interviews || 0
+          totalInterviews: mentor.total_interviews || 0,
+          // CRM
+          crmContextEnabled: mentor.crm_context_enabled ?? false
         })
       }
     } catch (error) {
@@ -304,6 +308,8 @@ export default function MentorSettings() {
       mentorPayload.hired_date = formData.hiredDate || undefined
       // Interview experience
       mentorPayload.total_interviews = formData.totalInterviews || 0
+      // CRM
+      mentorPayload.crm_context_enabled = formData.crmContextEnabled
 
       const mentorResponse = await fetch('/api/mentor/profile', {
         method: 'PATCH',
@@ -899,6 +905,30 @@ export default function MentorSettings() {
                 </label>
               </div>
             </div>
+
+              {/* CRM Context Toggle */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[#333333] dark:text-white">
+                  CRM Context Mode <span className="text-xs text-[#8b5cf6] font-semibold ml-1">Beta</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-[#8b5cf6]/50 transition-colors">
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={formData.crmContextEnabled}
+                      onChange={(e) => setFormData(prev => ({ ...prev, crmContextEnabled: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors ${formData.crmContextEnabled ? 'bg-[#8b5cf6]' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.crmContextEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#333333] dark:text-white">Enable CRM dashboard access</p>
+                    <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60">Unlocks Dashboard and Earnings pages in your mentor portal</p>
+                  </div>
+                </label>
+              </div>
 
             <Button
               type="submit"

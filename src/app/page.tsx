@@ -1,23 +1,498 @@
+'use client'
+
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Layout from "../components/Layout";
-import { getAllMentors } from "@/lib/mentorHelpers";
 
-export default async function Home() {
-  // Fetch all mentors and randomly select 4
-  const allMentors = await getAllMentors();
-  const shuffled = [...allMentors].sort(() => 0.5 - Math.random());
-  const featuredMentors = shuffled.slice(0, 4);
-
-  // Company logos for "Our coaches recently interviewed at"
-  const companyLogos = [
-    { name: 'Google', logo: '/logos/google.svg' },
-    { name: 'Meta', logo: '/logos/meta.svg' },
-    { name: 'Amazon', logo: '/logos/amazon.svg' },
-    { name: 'Apple', logo: '/logos/apple.svg' },
-    { name: 'Microsoft', logo: '/logos/microsoft.svg' },
-    { name: 'Stripe', logo: '/logos/stripe.svg' },
+/* ─────────────────────────────────────────────────────────────
+   Animated hero pipeline preview (from UI kit HeroAppPreview)
+───────────────────────────────────────────────────────────── */
+function HeroPreview() {
+  const [active, setActive] = useState(1);
+  useEffect(() => {
+    const t = setInterval(() => setActive(a => (a + 1) % 4), 2800);
+    return () => clearInterval(t);
+  }, []);
+  const cols = [
+    { k: 'Saved',     n: 12, c: '#94a3b8' },
+    { k: 'Applied',   n: 8,  c: '#0ea5e9' },
+    { k: 'Interview', n: 3,  c: '#f97316' },
+    { k: 'Offer',     n: 1,  c: '#10b981' },
   ];
+  return (
+    <Link href="/student/dashboard?tab=pipeline"
+      className="block bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-200/80 overflow-hidden"
+      style={{ transform: 'rotate(-0.5deg)' }}>
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+        <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-300" />
+        <span className="w-2.5 h-2.5 rounded-full bg-green-300" />
+        <span className="ml-3 text-[11px] text-gray-400 font-mono">elevait.app / pipeline</span>
+      </div>
+      <div className="p-4">
+        <p className="text-xs font-bold text-gray-800 mb-3">Your pipeline</p>
+        <div className="grid grid-cols-4 gap-2">
+          {cols.map((c, i) => (
+            <div key={c.k} className="rounded-xl p-2.5 transition-all duration-300"
+              style={{ background: i === active ? '#F8FAFC' : '#fff', border: `1.5px solid ${i === active ? c.c : '#F3F4F6'}` }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.c }} />
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">{c.k}</span>
+                <span className="ml-auto text-[10px] font-bold text-gray-800">{c.n}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {Array.from({ length: Math.min(3, c.n) }).map((_, j) => (
+                  <div key={j} className="h-5 rounded flex items-center gap-1 px-1.5"
+                    style={{ background: i === active ? '#fff' : '#fafafa', border: '1px solid #F3F4F6' }}>
+                    <div className="w-3 h-3 rounded" style={{ background: ['#F1F5F9','#FEF3C7','#DBEAFE'][j%3] }} />
+                    <div className="flex-1 h-1.5 rounded bg-gray-100" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2 items-center px-2.5 py-2 rounded-lg text-[11px] text-blue-800 font-medium"
+          style={{ background: 'linear-gradient(90deg,#EFF6FF,#F5F3FF)', border: '1px solid #E0E7FF' }}>
+          <span>✨</span>
+          <span><b>Maya K.</b> (Stripe APM) just accepted your prep session</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Product UI Snippets for sticky scroll
+───────────────────────────────────────────────────────────── */
+function ProductPreview({ index }: { index: number }) {
+  const chrome = (
+    <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-100 bg-gray-50/80">
+      <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+      <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+      <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+    </div>
+  );
+
+  if (index === 0) {
+    return (
+      <div
+        className="rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-2xl"
+        style={{ transform: 'perspective(900px) rotateY(-4deg) rotateX(2deg)', boxShadow: '0 32px 80px -12px rgba(14,165,233,0.18), 0 8px 32px -8px rgba(0,0,0,0.12)' }}
+      >
+        {/* App top bar */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
+          <div className="flex gap-1">
+            <div className="w-2 h-2 rounded-full bg-red-400" />
+            <div className="w-2 h-2 rounded-full bg-yellow-400" />
+            <div className="w-2 h-2 rounded-full bg-green-400" />
+          </div>
+          <div className="flex items-center gap-2 mx-auto">
+            <Image src="/images/Elevait_logo.png" alt="Elevait" width={18} height={18} className="h-5 w-auto" />
+            <span className="text-sm font-black text-gray-800">eleva<span className="text-[#0ea5e9]">it</span></span>
+          </div>
+          <span className="text-[10px] font-bold text-[#0ea5e9] bg-[#0ea5e9]/10 px-2 py-0.5 rounded-full">Pipeline</span>
+        </div>
+        {/* Kanban */}
+        <div className="p-3 bg-gray-50/60">
+          <div className="flex gap-2">
+            {[
+              { label: 'Saved',     color: '#64748b', cards: [['Stripe','APM'],['Linear','APM']] },
+              { label: 'Applied',   color: '#0ea5e9', cards: [['Figma','PM'],['Notion','APM']] },
+              { label: 'Interview', color: '#f97316', cards: [['Google','APM']] },
+              { label: 'Offer',     color: '#10b981', cards: [['Vercel','PM']] },
+            ].map(col => (
+              <div key={col.label} className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 mb-1.5" style={{ borderLeft: `2px solid ${col.color}`, paddingLeft: 4 }}>
+                  <span className="text-[8px] font-black uppercase tracking-wide" style={{ color: col.color }}>{col.label}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {col.cards.map(([co, role]) => (
+                    <div key={co} className="bg-white rounded-lg border border-gray-100 px-2 py-1.5 shadow-sm">
+                      <p className="text-[9px] font-bold text-gray-800">{co}</p>
+                      <p className="text-[8px] text-gray-400">{role}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <div
+        className="rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-2xl"
+        style={{ transform: 'perspective(900px) rotateY(-4deg) rotateX(2deg)', boxShadow: '0 32px 80px -12px rgba(249,115,22,0.18), 0 8px 32px -8px rgba(0,0,0,0.12)' }}
+      >
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          {chrome.props.children}
+          <span className="text-xs font-bold text-gray-700 ml-3">PM Jobs</span>
+          <div className="flex items-center gap-1.5 ml-auto px-2.5 py-1 bg-gray-100 rounded-lg">
+            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <span className="text-[10px] text-gray-400">Search roles...</span>
+          </div>
+        </div>
+        <div className="p-3 space-y-2">
+          {[
+            { letter: 'G', bg: '#4285F4', co: 'Google',  role: 'Associate PM',  loc: 'New York',  saved: true },
+            { letter: 'S', bg: '#635BFF', co: 'Stripe',   role: 'APM',           loc: 'Remote',    saved: false },
+            { letter: 'F', bg: '#F24E1E', co: 'Figma',    role: 'PM Intern',     loc: 'SF',        saved: false },
+          ].map((job) => (
+            <div key={job.co} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 bg-white">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0" style={{ background: job.bg }}>{job.letter}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-gray-800">{job.role} · {job.co}</p>
+                <p className="text-[9px] text-gray-400">{job.loc}</p>
+              </div>
+              <span className={`text-[9px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${
+                job.saved ? 'bg-[#0ea5e9] text-white' : 'bg-gray-100 text-gray-500'
+              }`}>{job.saved ? 'Saved ✓' : 'Save →'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (index === 2) {
+    return (
+      <div
+        className="rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-2xl"
+        style={{ transform: 'perspective(900px) rotateY(-4deg) rotateX(2deg)', boxShadow: '0 32px 80px -12px rgba(139,92,246,0.18), 0 8px 32px -8px rgba(0,0,0,0.12)' }}
+      >
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-700">Coaches</span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">Matched → Google Interview</span>
+        </div>
+        <div className="p-3 space-y-2">
+          {[
+            { initials: 'MK', color: '#0ea5e9', name: 'Maya K.',   title: 'APM @ Google', free: true,  price: null },
+            { initials: 'JR', color: '#8b5cf6', name: 'Jordan R.', title: 'PM @ Google',  free: false, price: '$50' },
+            { initials: 'AL', color: '#10b981', name: 'Alex L.',   title: 'APM @ Google', free: true,  price: null },
+          ].map((m) => (
+            <div key={m.name} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 bg-white">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ background: m.color }}>{m.initials}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-gray-800">{m.name}</p>
+                <p className="text-[9px] text-gray-400">{m.title}</p>
+              </div>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${ m.free ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600' }`}>{m.free ? 'FREE' : m.price}</span>
+                <span className="text-[9px] font-semibold text-[#0ea5e9]">Book →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-2xl"
+      style={{ transform: 'perspective(900px) rotateY(-4deg) rotateX(2deg)', boxShadow: '0 32px 80px -12px rgba(16,185,129,0.18), 0 8px 32px -8px rgba(0,0,0,0.12)' }}
+    >
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-700">Gmail</span>
+        <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Connected
+        </span>
+      </div>
+      <div className="p-3 space-y-2.5">
+        <div className="p-3 rounded-xl border border-blue-100 bg-blue-50/50">
+          <p className="text-[9px] text-gray-400 mb-0.5">From: talent@google.com</p>
+          <p className="text-[10px] font-semibold text-gray-800 leading-relaxed">&ldquo;Congrats! We&rsquo;d like to move you to the next round...&rdquo;</p>
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="w-px h-3 bg-gray-200" />
+          <span className="text-[9px] text-gray-400 font-medium">auto-detected</span>
+          <div className="w-px h-3 bg-gray-200" />
+          <svg className="w-3 h-3 text-gray-300" viewBox="0 0 10 10" fill="currentColor"><path d="M5 9L0.669873 1.5L9.33013 1.5L5 9Z"/></svg>
+        </div>
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-orange-50 border border-orange-100">
+          <span className="text-[9px] font-bold px-2 py-0.5 bg-sky-100 text-sky-700 rounded">Applied</span>
+          <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          <span className="text-[9px] font-bold px-2 py-0.5 bg-orange-200 text-orange-700 rounded">Interview</span>
+          <span className="text-[9px] text-gray-400 truncate">· Google APM</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   How it’s Different — Sticky Scroll (Apple-style)
+───────────────────────────────────────────────────────────── */
+function HowItsDifferentSection() {
+  const [active, setActive] = useState(0);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const available = el.offsetHeight - window.innerHeight;
+      if (available <= 0) return;
+      const scrolled = -rect.top;
+      const pct = Math.max(0, Math.min(0.9999, scrolled / available));
+      setActive(Math.floor(pct * 4));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const features = [
+    {
+      icon: '📋', color: '#0ea5e9', bg: '#EFF9FF', num: '01',
+      title: 'Applications are the center',
+      body: 'Every mentor, job, and resource is organized around your applications — not the other way around. Drag cards, update stages, see the whole hunt at a glance.',
+      link: '/student/dashboard?tab=pipeline', linkText: 'Open my pipeline →',
+    },
+    {
+      icon: '🎯', color: '#f97316', bg: '#FFF7ED', num: '02',
+      title: 'Jobs flow straight into your tracker',
+      body: 'One click saves a PM role from the job board directly into your pipeline as “Saved.” No copy-pasting, no spreadsheet rows, no lost tabs.',
+      link: '/jobs', linkText: 'Browse PM jobs →',
+    },
+    {
+      icon: '🤝', color: '#8b5cf6', bg: '#F5F3FF', num: '03',
+      title: 'Mentors matched to your interviews',
+      body: 'When you move a card to Interview, we surface coaches who were recently hired at that exact company — so your prep is always fresh and relevant.',
+      link: '/coaches', linkText: 'Find a coach →',
+    },
+    {
+      icon: '✉️', color: '#10b981', bg: '#ECFDF5', num: '04',
+      title: 'Gmail auto-updates your stages',
+      body: 'Connect Gmail once and we detect recruiter emails — moving cards from Applied → Interview and flagging rejections automatically.',
+      link: '/student/dashboard?tab=settings', linkText: 'Set it up →',
+    },
+  ];
+
+  const f = features[active];
+
+  return (
+    <div ref={sectionRef} style={{ height: '400vh' }}>
+      <div
+        className="sticky top-0 h-screen flex flex-col justify-center overflow-hidden transition-colors duration-700"
+        style={{ background: f.bg }}
+      >
+        {/* Top label */}
+        <div className="absolute top-7 left-0 right-0 text-center">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">How it&apos;s different</span>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
+          {/* Left: animated content */}
+          <div key={active} className="animate-slide-right">
+            <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: f.color }}>
+              {f.num} / 04
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-5 tracking-tight">
+              {f.title}
+            </h2>
+            <p className="text-lg text-gray-500 leading-relaxed mb-8 max-w-md">{f.body}</p>
+            <Link
+              href={f.link}
+              className="inline-flex items-center gap-2 text-sm font-bold px-6 py-3 rounded-full text-white transition-all hover:scale-105"
+              style={{ background: f.color, boxShadow: `0 8px 24px -8px ${f.color}80` }}
+            >
+              {f.linkText}
+            </Link>
+          </div>
+
+          {/* Right: product preview (desktop) */}
+          <div key={`prev-${active}`} className="hidden lg:block animate-slide-right">
+            <ProductPreview index={active} />
+          </div>
+
+          {/* Mobile dot nav */}
+          <div className="flex lg:hidden justify-center gap-2.5">
+            {features.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: i === active ? 20 : 8,
+                  height: 8,
+                  background: i === active ? f.color : '#CBD5E1',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5">
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${(active + 1) * 25}%`, background: f.color }}
+          />
+        </div>
+
+        {/* Scroll hint */}
+        {active === 0 && (
+          <div className="absolute bottom-5 right-8 flex items-center gap-1.5 text-gray-400 text-xs animate-pulse pointer-events-none">
+            <span>scroll</span>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Interactive Journey section (from UI kit Journey)
+───────────────────────────────────────────────────────────── */
+function JourneySection() {
+  const [step, setStep] = useState(0);
+  const steps = [
+    { t: 'Discover & Apply', sub: 'Step 1', body: 'Browse our PM job board and save roles directly to your tracker. They land as “Saved” with one click — no tabs, no spreadsheets.' },
+    { t: 'Track Interviews',  sub: 'Step 2', body: 'Drag cards through stages as you progress. We surface relevant mentors and resources at each stage to keep you prepared.' },
+    { t: 'Get Mentorship',    sub: 'Step 3', body: 'Connect with coaches who were recently hired at your target companies. Book a session, access prep resources, and nail the interview.' },
+    { t: 'Offer',             sub: 'Step 4', body: 'Negotiate with confidence using guidance from a peer who received the same offer. Compare competing offers side-by-side.' },
+  ];
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => (s + 1) % 4), 4500);
+    return () => clearInterval(t);
+  }, []);
+  const colors = ['#94a3b8', '#0ea5e9', '#f97316', '#10b981'];
+  const stages = ['Saved', 'Applied', 'Interview', 'Offer'];
+  return (
+    <section className="py-20 sm:py-24 bg-gray-50/80 dark:bg-[#0d161b]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10">
+          <div className="text-xs font-bold uppercase tracking-widest text-[#0ea5e9] mb-2">The journey</div>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">One tool, whole hunt.</h2>
+        </div>
+        {/* Tab strip */}
+        <div className="grid grid-cols-4 gap-px bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden mb-4">
+          {steps.map((s, i) => (
+            <button key={s.t} onClick={() => setStep(i)}
+              className="relative px-3 py-4 text-left transition-colors"
+              style={{ background: step === i ? '#fff' : '#fafbfc' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2 h-2 rounded-full transition-colors"
+                  style={{ background: step === i ? colors[i] : '#CBD5E1' }} />
+                <span className="text-[10px] text-gray-400 font-medium">{s.sub}</span>
+              </div>
+              <div className="text-sm font-bold" style={{ color: step === i ? '#111' : 'rgba(51,51,51,0.65)' }}>{s.t}</div>
+              {step === i && <div className="absolute left-0 right-0 bottom-0 h-0.5" style={{ background: colors[i] }} />}
+            </button>
+          ))}
+        </div>
+        {/* Body */}
+        <div className="bg-white dark:bg-[#16242c] border border-gray-200 dark:border-gray-700 rounded-2xl p-7 grid grid-cols-1 sm:grid-cols-2 gap-8 items-center min-h-[180px]">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: colors[step] }}>
+              {steps[step].sub} · step {step + 1} of 4
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{steps[step].t}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{steps[step].body}</p>
+          </div>
+          {/* Mini kanban viz */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {stages.map((s, i) => (
+              <div key={s} className="rounded-xl p-2 transition-all duration-300"
+                style={{
+                  background: i === step ? '#fff' : '#fafbfc',
+                  border: `1.5px solid ${i === step ? colors[i] : '#F1F5F9'}`,
+                  transform: i === step ? 'translateY(-4px)' : 'translateY(0)',
+                  boxShadow: i === step ? `0 12px 24px -12px ${colors[i]}40` : 'none',
+                }}>
+                <div className="flex items-center gap-1 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors[i] }} />
+                  <span className="text-[8px] font-bold uppercase tracking-wide text-gray-700">{s}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <div key={j} className="h-4 rounded flex items-center gap-1 px-1"
+                      style={{ background: '#fff', border: '1px solid #F3F4F6', opacity: i === step ? 1 : 0.45 }}>
+                      <div className="w-2 h-2 rounded" style={{ background: ['#F1F5F9','#FEF3C7','#DBEAFE'][j%3] }} />
+                      <div className="flex-1 h-1 rounded bg-gray-100" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Coach Face Carousel (auto-scrolling marquee)
+───────────────────────────────────────────────────────────── */
+function CoachCarousel({ coaches }: { coaches: any[] }) {
+  if (coaches.length === 0) return null;
+  const companies = coaches
+    .map(c => c.mentor_data?.current_company)
+    .filter(Boolean)
+    .filter((v, i, a) => a.indexOf(v) === i);
+  if (companies.length === 0) return null;
+  const doubled = [...companies, ...companies];
+  return (
+    <section className="py-10 bg-gray-50/70 dark:bg-[#0d161b] overflow-hidden">
+      <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-6">
+        Our coaches were recently hired at
+      </p>
+      <div className="relative">
+        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50/70 dark:from-[#0d161b] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50/70 dark:from-[#0d161b] to-transparent z-10 pointer-events-none" />
+        <div className="flex gap-3 animate-marquee" style={{ width: 'max-content' }}>
+          {doubled.map((company, i) => (
+            <span key={i} className="flex items-center px-4 py-2 bg-white dark:bg-[#16242c] rounded-full border border-gray-100 dark:border-gray-800 shadow-sm flex-shrink-0 text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
+              {company}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function Home() {
+  const router = useRouter();
+  const [featuredMentors, setFeaturedMentors] = useState<any[]>([]);
+
+  // Redirect logged-in users straight to their pipeline
+  useEffect(() => {
+    fetch('/api/me').then(r => {
+      if (r.ok) return r.json();
+    }).then(data => {
+      if (data?.user) {
+        if (data.profile?.role === 'mentor') {
+          router.replace('/mentor/dashboard');
+        } else {
+          router.replace('/student/dashboard?tab=pipeline');
+        }
+      }
+    }).catch(() => {});
+  }, [router]);
+
+  // Fetch featured coaches
+  useEffect(() => {
+    fetch('/api/coaches?limit=16').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.coaches) {
+        const shuffled = [...data.coaches].sort(() => 0.5 - Math.random());
+        setFeaturedMentors(shuffled.slice(0, 12));
+      }
+    }).catch(() => {});
+  }, []);
 
   // Sample testimonials
   const testimonials = [
@@ -67,365 +542,163 @@ export default async function Home() {
 
   return (
     <Layout variant="landing">
-      {/* Hero Section - Redesigned */}
-      <div className="relative isolate overflow-hidden min-h-[85vh] sm:min-h-screen flex items-center pt-20 pb-16 sm:pt-32 sm:pb-28">
 
-        {/* Background Elements */}
-        <div className="absolute inset-0 -z-10 h-full w-full bg-white dark:bg-[#101c22]">
-           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        </div>
-        
-        {/* Gradient Orbs */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] opacity-30 bg-[radial-gradient(circle,rgba(139,92,246,0.25)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
-          <div className="absolute top-[20%] right-0 translate-x-1/3 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] opacity-20 bg-[radial-gradient(circle,rgba(14,165,233,0.3)_0%,rgba(0,0,0,0)_70%)] blur-3xl"></div>
-        </div>
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden bg-white dark:bg-[#101c22] pt-20 pb-16 sm:pt-28 sm:pb-20">
+        {/* Gradient orbs */}
+        <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full opacity-20 bg-[radial-gradient(circle,rgba(139,92,246,0.3)_0%,transparent_70%)] blur-3xl" />
+        <div className="pointer-events-none absolute top-20 -right-40 w-[500px] h-[500px] rounded-full opacity-15 bg-[radial-gradient(circle,rgba(14,165,233,0.35)_0%,transparent_70%)] blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.08] mix-blend-overlay" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center relative">
-          <div className="mx-auto max-w-4xl flex flex-col items-center">
-
-            {/* Free Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm border border-emerald-200/40 dark:border-emerald-700/40 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-semibold mb-4 shadow-sm">
-              <span className="text-base">🎁</span>
-              <span>Talk to coaches for free</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#333333] dark:text-white lg:text-7xl mb-4 sm:mb-6 drop-shadow-sm">
-              Learn from People Who <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0ea5e9] to-[#8b5cf6]">Just Went Through It</span>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          {/* Left: copy */}
+          <div>
+            <div className="text-sm font-semibold text-[#0ea5e9] tracking-wide mb-4">Your personal recruitment OS</div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.05] text-gray-900 dark:text-white mb-5">
+              One place for every{' '}
+              <span className="bg-gradient-to-r from-[#0ea5e9] to-[#8b5cf6] bg-clip-text text-transparent">
+                application
+              </span>
+              , mentor, and job.
             </h1>
-            
-            <p className="text-base sm:text-xl leading-7 sm:leading-8 text-[#333333]/70 dark:text-[#F5F5F5]/70 max-w-2xl mb-8 sm:mb-10">
-              Free peer coaching from recent PM hires at top tech companies. Get real interview prep from coaches who remember every detail—because they just lived it.
+            <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed max-w-lg mb-8">
+              Elevait lives alongside you through the whole PM job hunt. Track every role, prep with peers who just got hired, and never lose track of where you are.
             </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto mb-10 sm:mb-12">
-              <Link href="/coaches" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm sm:text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 transform hover:-translate-y-0.5 text-center">
-                Find a Peer Coach
+            <div className="flex flex-wrap gap-3 mb-7">
+              <Link href="/student/dashboard?tab=pipeline"
+                className="px-7 py-3.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white font-bold rounded-full shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 transition-all duration-200 hover:-translate-y-0.5">
+                Open My Pipeline →
               </Link>
-              <Link href="/mentor/apply" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] text-sm sm:text-base font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300 flex items-center justify-center gap-2 group">
-                Become a Coach
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
+              <Link href="/mentor/apply"
+                className="px-7 py-3.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 font-semibold rounded-full hover:border-[#8b5cf6]/60 hover:text-[#8b5cf6] transition-all duration-200">
+                Become a mentor →
               </Link>
             </div>
-
-            {/* Company Logos Section */}
-            <div className="w-full max-w-3xl">
-              <p className="text-sm font-medium text-[#333333]/60 dark:text-[#F5F5F5]/60 mb-4">
-                Our coaches recently interviewed at:
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-10 opacity-70">
-                {companyLogos.map((company) => (
-                  <div key={company.name} className="h-8 flex items-center grayscale hover:grayscale-0 transition-all">
-                    <span className="text-lg font-bold text-[#333333]/50 dark:text-[#F5F5F5]/50">{company.name}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-[#333333]/50 dark:text-[#F5F5F5]/50 mt-3">
-                All coaches hired within the last 2 years
-              </p>
+            <div className="flex gap-6 text-sm text-gray-400 flex-wrap">
+              <span>✓ Free peer coaching</span>
+              <span>✓ No credit card</span>
+              <span>✓ 500+ PMs hired</span>
             </div>
+          </div>
+          {/* Right: animated preview */}
+          <div className="w-full max-w-lg mx-auto lg:mx-0">
+            <HeroPreview />
           </div>
         </div>
       </div>
 
-      {/* Why Peer Coaching Works Better - Value Proposition Section */}
-      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Why Peer Coaching Works Better</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 sm:gap-8 md:grid-cols-3">
-            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
-                🎯
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-3">Fresh Perspective</h3>
-              <p className="text-base leading-relaxed text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                Our coaches just went through the same interviews you're prepping for. They remember the exact questions, the panel dynamics, and what actually worked—not outdated advice from 5 years ago.
-              </p>
-            </div>
+      {/* ── HOW IT’S DIFFERENT ─────────────────────────────────── */}
+      <HowItsDifferentSection />
 
-            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400">
-                💰
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-3">Actually Affordable</h3>
-              <p className="text-base leading-relaxed text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                Most sessions are completely free. Coaches set their own rates, with the majority choosing to give back by coaching for free. When there is a fee, it's usually $20-40, not $200+.
-              </p>
-            </div>
+      {/* ── COACH CAROUSEL ────────────────────────────────────── */}
+      <CoachCarousel coaches={featuredMentors} />
 
-            <div className="relative flex flex-col items-center text-center p-6 sm:p-8 bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl mb-6 bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                🤝
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-3">Peer-to-Peer Connection</h3>
-              <p className="text-base leading-relaxed text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                Talk to someone who was in your shoes last year. No intimidating senior directors—just real conversations with people who get the anxiety, the rejections, and the breakthrough moments.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ── JOURNEY ───────────────────────────────────────────── */}
+      <JourneySection />
 
-      {/* How It Works Section - Detailed Journey */}
-      <div className="py-16 sm:py-24 bg-white dark:bg-[#101c22]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-[#0ea5e9] mb-2">How It Works</h2>
-            <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Your Path to PM Interviews</p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 sm:gap-8 lg:grid-cols-3">
-            {/* Step 1 */}
-            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
-              <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">1</div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
-                🔍
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-4">Find Your Peer Coach</h3>
-              <p className="text-sm text-[#333333]/70 dark:text-[#F5F5F5]/60 mb-4">Browse coaches by:</p>
-              <ul className="space-y-2 text-sm text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Company they recently joined (Google, Meta, Stripe, etc.)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Interview timeline (hired in last 6 months, last year, last 2 years)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Specialization (APM programs, rotational roles, IC roles)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Free vs. paid sessions
-                </li>
-              </ul>
-            </div>
-
-            {/* Step 2 */}
-            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
-              <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">2</div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                📅
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-4">Book a Free Session</h3>
-              <ul className="space-y-2 text-sm text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Most coaches offer free 30-45 minute sessions
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Some offer paid deep-dives for $20-40
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Flexible scheduling—find times that work for you
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Video call or phone, your choice
-                </li>
-              </ul>
-            </div>
-
-            {/* Step 3 */}
-            <div className="relative flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
-              <div className="absolute top-4 right-6 text-6xl font-black text-gray-100 dark:text-gray-800/50 select-none">3</div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl mb-4 bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
-                🚀
-              </div>
-              <h3 className="text-xl font-bold text-[#333333] dark:text-white mb-4">Get Real Interview Prep</h3>
-              <ul className="space-y-2 text-sm text-[#333333]/70 dark:text-[#F5F5F5]/60">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Practice the exact case questions they were asked
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Review their actual interview notes
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Learn the frameworks that got them hired
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#0ea5e9]">•</span>
-                  Get intros to their teams (when possible)
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Meet Our Coaches Section */}
-      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-4 sm:gap-6">
-            <div className="max-w-2xl">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#f97316] mb-2">Meet Our Coaches</h2>
-              <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Recent PM Hires Ready to Help</p>
-              <p className="mt-4 text-lg text-[#333333]/70 dark:text-[#F5F5F5]/70">Coaches who just went through what you're preparing for.</p>
-            </div>
-            <Link href="/coaches" className="hidden md:flex items-center gap-2 text-[#0ea5e9] font-bold hover:text-[#0284c7] transition-colors">
-              View all coaches <span>→</span>
-            </Link>
+      {/* ── COACHES ───────────────────────────────────────────── */}
+      <section className="py-20 sm:py-24 bg-white dark:bg-[#101c22]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#f97316] mb-2">Meet Our Coaches</div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Recent PM hires ready to help.</h2>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">They just went through what you&apos;re preparing for.</p>
           </div>
 
           {featuredMentors.length > 0 ? (
-            <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-              {featuredMentors.map((mentor) => {
-                const mentorData = mentor.mentor_data;
-                const displayName = mentor.full_name || 'Anonymous Coach';
-                const displayTitle = mentorData?.current_title || 'Product Manager';
-                const displayCompany = mentorData?.current_company || 'Tech Company';
-                const priceCents = mentorData?.price_cents;
-                const pricingModel = mentorData?.pricing_model || 'free';
-                const isFree = pricingModel === 'free';
-                const isBoth = pricingModel === 'both' && priceCents && priceCents > 0;
-                const paidPrice = priceCents ? `$${(priceCents / 100).toFixed(0)}` : null;
-                const avatarUrl = mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0ea5e9&color=fff&size=128`;
-                const focusAreas = mentorData?.focus_areas?.slice(0, 3) || ['PM Interviews'];
-
-                return (
-                  <Link 
-                    key={mentor.id} 
-                    href={`/coaches/${mentor.id}`}
-                    className="group flex-shrink-0 w-[260px] sm:w-72 snap-start flex flex-col bg-white dark:bg-[#16242c] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-[#0ea5e9]/50 transition-all duration-300"
-                  >
-                    <div className="p-6 flex flex-col h-full">
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="relative">
-                          <Image 
-                            className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-[#16242c] shadow-md" 
-                            alt={`Portrait of ${displayName}`} 
-                            src={avatarUrl}
-                            width={64}
-                            height={64}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-[#333333] dark:text-white group-hover:text-[#0ea5e9] transition-colors truncate">{displayName}</h3>
-                          <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80 truncate">{displayTitle} @ {displayCompany}</p>
-                          <p className="text-xs text-[#333333]/50 dark:text-[#F5F5F5]/50 mt-1">Hired recently</p>
+            <div className="relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white dark:from-[#101c22] to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white dark:from-[#101c22] to-transparent z-10 pointer-events-none" />
+              <div className="flex gap-4 animate-marquee-slow" style={{ width: 'max-content' }}>
+                {[...featuredMentors, ...featuredMentors].map((mentor, i) => {
+                  const md = mentor.mentor_data;
+                  const name = mentor.full_name || 'Anonymous Coach';
+                  const title = md?.current_title || 'Product Manager';
+                  const company = md?.current_company || '';
+                  const isFree = (md?.pricing_model || 'free') === 'free';
+                  const price = md?.price_cents ? `$${Math.round(md.price_cents / 100)}` : null;
+                  const avatar = mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0ea5e9&color=fff&size=128`;
+                  return (
+                    <Link key={`${mentor.id}-${i}`} href={`/coaches/${mentor.id}`}
+                      className="flex-shrink-0 w-52 flex flex-col bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 p-4 hover:border-[#0ea5e9]/40 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Image src={avatar} alt={name} width={40} height={40} className="rounded-full object-cover flex-shrink-0 w-10 h-10" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{name}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{title}</p>
                         </div>
                       </div>
-
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {focusAreas.map((area, idx) => (
-                          <span key={idx} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-[#333333]/70 dark:text-[#F5F5F5]/70 rounded-md">
-                            {area}
-                          </span>
-                        ))}
+                      {company && (
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0ea5e9]/10 text-[#0ea5e9] whitespace-nowrap">@ {company}</span>
+                        </div>
+                      )}
+                      <div className="mt-auto pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isFree ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                        }`}>{isFree ? 'FREE' : `${price}/session`}</span>
+                        <span className="text-[11px] font-semibold text-[#0ea5e9]">Book →</span>
                       </div>
-
-                      <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-                        {isBoth ? (
-                          <div className="flex gap-1.5">
-                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                              FREE
-                            </span>
-                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                              {paidPrice}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className={`text-sm font-bold px-3 py-1 rounded-full ${isFree ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
-                            {isFree ? 'FREE' : `${paidPrice}/session`}
-                          </span>
-                        )}
-                        <span className="text-sm font-semibold text-[#0ea5e9] group-hover:underline">
-                          {isBoth ? 'View Options →' : isFree ? 'Book Free →' : 'Book Session →'}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           ) : (
-            <div className="text-center py-20 bg-white dark:bg-[#16242c] rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-              <p className="text-[#333333]/60 dark:text-[#F5F5F5]/60">
-                Coaches coming soon. <Link href="/mentor/apply" className="text-[#0ea5e9] font-medium hover:underline">Apply to be a coach →</Link>
+            <div className="text-center py-16 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+              <p className="text-gray-400 text-sm">
+                Coaches coming soon.{' '}
+                <Link href="/mentor/apply" className="text-[#0ea5e9] font-medium hover:underline">Apply to be a coach →</Link>
               </p>
             </div>
           )}
-
-          <div className="mt-8 text-center md:hidden">
-            <Link href="/coaches" className="inline-flex items-center gap-2 text-[#0ea5e9] font-bold">
-              View all coaches <span>→</span>
-            </Link>
+          <div className="mt-6 text-center">
+            <Link href="/coaches" className="text-[#0ea5e9] font-semibold text-sm">View all coaches →</Link>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Social Proof / Testimonials Section */}
-      <div className="py-16 sm:py-24 bg-white dark:bg-[#101c22]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Join 500+ PMs Who Got Coached (and Hired)</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 sm:gap-8 md:grid-cols-3">
-            {testimonials.map((testimonial, idx) => (
-              <div key={idx} className="flex flex-col p-6 sm:p-8 bg-gray-50 dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800">
-                <div className="flex-1">
-                  <p className="text-base sm:text-lg text-[#333333]/80 dark:text-[#F5F5F5]/80 italic leading-relaxed">
-                    "{testimonial.quote}"
-                  </p>
-                </div>
-                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <p className="font-bold text-[#333333] dark:text-white">{testimonial.name}</p>
-                  <p className="text-sm text-[#0ea5e9] font-medium">{testimonial.role}</p>
-                  <p className="text-xs text-[#333333]/50 dark:text-[#F5F5F5]/50 mt-1">Hired {testimonial.hiredDate}</p>
+      {/* ── TESTIMONIALS ──────────────────────────────────────── */}
+      <section className="py-20 sm:py-24 bg-gray-50/60 dark:bg-[#0d161b]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white text-center mb-12">
+            Join 500+ PMs who got coached (and hired).
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <div key={i} className="flex flex-col bg-white dark:bg-[#16242c] rounded-2xl border border-gray-100 dark:border-gray-800 p-7">
+                <p className="flex-1 text-base text-gray-600 dark:text-gray-300 italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700">
+                  <p className="font-bold text-gray-900 dark:text-white text-sm">{t.name}</p>
+                  <p className="text-xs text-[#0ea5e9] font-medium mt-0.5">{t.role}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Hired {t.hiredDate}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* FAQ Section */}
-      <div className="py-16 sm:py-24 bg-gray-50/50 dark:bg-[#0d161b]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#333333] dark:text-white lg:text-4xl">Common Questions</h2>
-          </div>
-          
-          <div className="space-y-4">
-            {faqItems.map((item, idx) => (
-              <details key={idx} className="group bg-white dark:bg-[#16242c] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <summary className="flex items-center justify-between p-4 sm:p-6 cursor-pointer list-none">
-                  <h3 className="text-base sm:text-lg font-semibold text-[#333333] dark:text-white pr-4">{item.question}</h3>
-                  <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-[#333333] dark:text-white group-open:rotate-180 transition-transform">
-                    ↓
-                  </span>
+      {/* ── FAQ ───────────────────────────────────────────────── */}
+      <section className="py-20 sm:py-24 bg-white dark:bg-[#101c22]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white text-center mb-12">Common Questions</h2>
+          <div className="flex flex-col gap-3">
+            {faqItems.map((item, i) => (
+              <details key={i} className="group bg-gray-50 dark:bg-[#16242c] rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none gap-4">
+                  <span className="font-semibold text-sm text-gray-900 dark:text-white">{item.question}</span>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-white text-xs group-open:rotate-180 transition-transform">↓</span>
                 </summary>
-                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-                  <p className="text-[#333333]/70 dark:text-[#F5F5F5]/70 leading-relaxed">{item.answer}</p>
+                <div className="px-5 pb-5">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{item.answer}</p>
                 </div>
               </details>
             ))}
           </div>
 
-          <div className="mt-12 text-center">
-            <p className="text-[#333333]/70 dark:text-[#F5F5F5]/70 mb-4">Ready to get started?</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link href="/coaches" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm sm:text-base font-bold rounded-full shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 text-center">
-                Find a Peer Coach
-              </Link>
-              <Link href="/mentor/apply" className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white dark:bg-gray-800 text-[#333333] dark:text-white border-2 border-[#0ea5e9] text-sm sm:text-base font-bold rounded-full hover:bg-[#0ea5e9]/10 transition-all duration-300 text-center">
-                Become a Coach
-              </Link>
-            </div>
-          </div>
         </div>
-      </div>
+      </section>
     </Layout>
   )
 }

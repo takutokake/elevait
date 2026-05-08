@@ -1,66 +1,71 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar } from '@/components/ui/avatar'
+import Link from 'next/link'
+import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
+import { useRouter } from 'next/navigation'
 
 interface Booking {
   id: string
   booking_start_time: string
   booking_end_time: string
   status: string
-  session_notes?: string
   google_meet_link?: string
 }
 
-interface MentorData {
-  user: any
-  profile: any
-  mentor: any
-}
-
 export default function MentorDashboard() {
-  const [mentorData, setMentorData] = useState<MentorData | null>(null)
+  const [mentorData, setMentorData] = useState<any>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [crmEnabled, setCrmEnabled] = useState(false)
+  const [crmSaving, setCrmSaving] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch mentor data
-        const mentorResponse = await fetch('/api/mentor/me')
-        if (mentorResponse.ok) {
-          const data = await mentorResponse.json()
-          setMentorData(data)
-
-          // Fetch bookings as mentor
-          const bookingsResponse = await fetch('/api/bookings?role=mentor')
-          if (bookingsResponse.ok) {
-            const bookingsData = await bookingsResponse.json()
-            setBookings(bookingsData.bookings || [])
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
+    Promise.all([
+      fetch('/api/mentor/me').then(r => r.ok ? r.json() : null),
+      fetch('/api/bookings?role=mentor').then(r => r.ok ? r.json() : null),
+    ]).then(([mentor, bookingsData]) => {
+      if (mentor) {
+        setMentorData(mentor)
+        setCrmEnabled(mentor.mentor?.crm_context_enabled === true)
       }
-    }
-
-    fetchData()
+      if (bookingsData) setBookings(bookingsData.bookings || [])
+    }).finally(() => setLoading(false))
   }, [])
+
+  const handleCrmToggle = async () => {
+    const next = !crmEnabled
+    setCrmEnabled(next)
+    setCrmSaving(true)
+    try {
+      await fetch('/api/mentor/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crm_context_enabled: next }),
+      })
+    } finally {
+      setCrmSaving(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    const supabase = getSupabaseBrowserClient()
+    await supabase.auth.signOut()
+    router.replace('/')
+  }
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-          </div>
+      <div className="p-8 space-y-5 max-w-5xl">
+        <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+          ))}
         </div>
+        <div className="h-24 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+        <div className="h-40 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
       </div>
     )
   }
@@ -68,172 +73,206 @@ export default function MentorDashboard() {
   if (!mentorData) {
     return (
       <div className="p-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Unable to load mentor data. Please try again.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-8 text-center">
+          <p className="text-gray-500">Unable to load dashboard. Please try again.</p>
+          <button onClick={() => window.location.reload()} className="mt-4 text-sm font-semibold text-[#0ea5e9] hover:underline">
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
 
   const { profile, mentor } = mentorData
   const now = new Date()
-  
-  const pendingBookings = bookings.filter(booking => 
-    booking.status === 'pending'
-  )
-  
-  const upcomingBookings = bookings.filter(booking => 
-    new Date(booking.booking_end_time) > now && booking.status === 'confirmed'
-  )
-  
-  const completedBookings = bookings.filter(booking => 
-    booking.status === 'completed'
-  )
-  
-  // Calculate mentor earnings (80% of total, only for completed sessions with survey)
-  const totalEarnings = completedBookings
-    .reduce((sum, booking) => {
-      const duration = (new Date(booking.booking_end_time).getTime() - new Date(booking.booking_start_time).getTime()) / (1000 * 60 * 60)
-      const sessionRevenue = duration * (mentor.price_cents || 0) / 100
-      return sum + (sessionRevenue * 0.80) // Mentor gets 80%
-    }, 0)
+  const pending   = bookings.filter(b => b.status === 'pending')
+  const upcoming  = bookings.filter(b => new Date(b.booking_end_time) > now && b.status === 'confirmed')
+  const completed = bookings.filter(b => b.status === 'completed')
+  const earnings  = completed.reduce((sum, b) => {
+    const hrs = (new Date(b.booking_end_time).getTime() - new Date(b.booking_start_time).getTime()) / 3_600_000
+    return sum + hrs * (mentor.price_cents || 0) / 100 * 0.8
+  }, 0)
+
+  const firstName = (profile.full_name || 'Coach').split(' ')[0]
+  const initials  = (profile.full_name || 'M').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div className="p-8 space-y-8">
-      {/* Header Card */}
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-        <CardHeader>
-          <div className="flex items-center space-x-6">
-            <Avatar className="h-20 w-20">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-[#0ea5e9] flex items-center justify-center text-white text-2xl font-bold">
-                  {profile.full_name?.charAt(0) || 'M'}
-                </div>
-              )}
-            </Avatar>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-[#333333] dark:text-white">
-                Welcome back, {profile.full_name}
-              </h1>
-              <div className="space-y-1 mt-2">
-                <p className="text-lg text-[#333333] dark:text-white font-semibold">
-                  {mentor.current_title} at {mentor.current_company}
-                </p>
-                <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
-                  {mentor.alumni_school}
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+    <div className="p-6 sm:p-8 space-y-5 max-w-5xl">
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10 shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
-              Pending Approval
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-yellow-600 dark:text-yellow-400">
-              {pendingBookings.length}
-            </div>
-            <p className="text-xs text-yellow-700/80 dark:text-yellow-400/80 mt-1">
-              Awaiting your response
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Upcoming Sessions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-[#0ea5e9]">
-              {upcomingBookings.length}
-            </div>
-            <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
-              Next 30 days
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Completed Sessions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-[#8b5cf6]">
-              {completedBookings.length}
-            </div>
-            <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
-              All time
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Estimated Earnings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-[#f97316]">
-              ${totalEarnings.toFixed(0)}
-            </div>
-            <p className="text-xs text-[#333333]/60 dark:text-[#F5F5F5]/60 mt-1">
-              Your 80% share
-            </p>
-          </CardContent>
-        </Card>
+      {/* ── Welcome header ──────────────────────────────────── */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#0ea5e9] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-lg">
+          {profile.avatar_url
+            ? <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+            : initials}
+        </div>
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+            Hey, {firstName} 👋
+          </h1>
+          <p className="text-sm text-gray-400">{mentor.current_title} · {mentor.current_company}</p>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <Link href="/mentor/settings" className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+            Edit profile →
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-xs font-semibold text-red-400 hover:text-red-600 transition-colors"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-black text-[#333333] dark:text-white">
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <a
-              href="/mentor/availability"
-              className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="font-semibold text-[#333333] dark:text-white mb-1">
-                Manage Availability
-              </h3>
-              <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
-                Add or update your available time slots
-              </p>
-            </a>
-            <a
-              href="/mentor/sessions"
-              className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="font-semibold text-[#333333] dark:text-white mb-1">
-                View Sessions
-              </h3>
-              <p className="text-sm text-[#333333]/80 dark:text-[#F5F5F5]/80">
-                Check your upcoming and past sessions
-              </p>
-            </a>
+      {/* ── Stats ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Pending',   value: pending.length,          color: '#f97316', sub: 'Need response'  },
+          { label: 'Upcoming',  value: upcoming.length,         color: '#0ea5e9', sub: 'Next 30 days'   },
+          { label: 'Completed', value: completed.length,        color: '#8b5cf6', sub: 'All time'       },
+          { label: 'Earnings',  value: `$${earnings.toFixed(0)}`, color: '#10b981', sub: 'Your 80% share' },
+        ].map(({ label, value, color, sub }) => (
+          <div key={label} className="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+            <p className="text-3xl font-black" style={{ color }}>{value}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
+
+      {/* ── CRM Toggle ──────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">CRM Mode</p>
+              {crmSaving && <span className="text-[10px] text-gray-400 animate-pulse">Saving…</span>}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-sm">
+              Enable to access student pipeline views and additional coaching context about your mentees.
+            </p>
+          </div>
+          {/* Toggle switch */}
+          <button
+            role="switch"
+            aria-checked={crmEnabled}
+            onClick={handleCrmToggle}
+            className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]/40"
+            style={{ background: crmEnabled ? '#8b5cf6' : '#D1D5DB' }}
+          >
+            <div
+              className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"
+              style={{ transform: crmEnabled ? 'translateX(20px)' : 'translateX(2px)' }}
+            />
+          </button>
+        </div>
+        {crmEnabled && (
+          <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#8b5cf6]">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6]" />
+            Active — students can share their pipeline with you
+          </div>
+        )}
+      </div>
+
+      {/* ── Pending requests ────────────────────────────────── */}
+      {pending.length > 0 && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl border border-orange-200 dark:border-orange-800 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+              Pending Requests ({pending.length})
+            </p>
+            <Link href="/mentor/sessions" className="text-xs font-semibold text-orange-500 hover:underline">Manage →</Link>
+          </div>
+          <div className="space-y-2">
+            {pending.slice(0, 2).map(b => (
+              <div key={b.id} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-orange-100 dark:border-orange-800">
+                <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center flex-shrink-0">
+                  <span className="text-orange-600 font-black text-sm">!</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white">Session request</p>
+                  <p className="text-[11px] text-gray-400">
+                    {new Date(b.booking_start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+                <Link href="/mentor/sessions" className="text-xs font-semibold text-orange-500 hover:underline flex-shrink-0">
+                  Review →
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Upcoming sessions ───────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Upcoming Sessions</p>
+          <Link href="/mentor/sessions" className="text-xs font-semibold text-[#0ea5e9] hover:underline">View all →</Link>
+        </div>
+        {upcoming.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-gray-400">No upcoming sessions</p>
+            <Link href="/mentor/availability" className="text-xs text-[#0ea5e9] font-semibold hover:underline mt-1 inline-block">
+              Update availability →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {upcoming.slice(0, 4).map(b => (
+              <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/30">
+                <div className="w-9 h-9 rounded-xl bg-[#0ea5e9]/10 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-[#0ea5e9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Coaching session</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(b.booking_start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                {b.google_meet_link && (
+                  <a href={b.google_meet_link} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-bold text-[#0ea5e9] hover:underline flex-shrink-0">
+                    Join →
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Quick actions ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link href="/mentor/availability"
+          className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 hover:border-[#0ea5e9]/40 hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-xl bg-[#0ea5e9]/10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-[#0ea5e9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">Manage Availability</p>
+            <p className="text-xs text-gray-400 mt-0.5">Add or update your open slots</p>
+          </div>
+        </Link>
+        <Link href="/mentor/sessions"
+          className="flex items-center gap-4 p-5 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 hover:border-[#8b5cf6]/40 hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-xl bg-[#8b5cf6]/10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-[#8b5cf6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">View Sessions</p>
+            <p className="text-xs text-gray-400 mt-0.5">Check upcoming &amp; past sessions</p>
+          </div>
+        </Link>
+      </div>
+
     </div>
   )
 }

@@ -236,13 +236,20 @@ export default function MentorLayout({
     return <>{children}</>
   }
 
-  const navItems = [
-    { href: '/mentor/dashboard', label: 'Dashboard' },
+  const crmEnabled = mentorData?.mentor?.crm_context_enabled === true
+
+  const baseNavItems = [
     { href: '/mentor/sessions', label: 'Sessions' },
-    { href: '/mentor/earnings', label: 'Earnings' },
     { href: '/mentor/availability', label: 'Availability' },
     { href: '/mentor/settings', label: 'Profile Settings' },
   ]
+
+  const crmNavItems = [
+    { href: '/mentor/dashboard', label: 'Dashboard' },
+    { href: '/mentor/earnings', label: 'Earnings' },
+  ]
+
+  const navItems = crmEnabled ? [...crmNavItems, ...baseNavItems] : baseNavItems
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#101c22]">
@@ -255,9 +262,14 @@ export default function MentorLayout({
         {/* Sidebar */}
         <div className="w-64 min-h-screen bg-white dark:bg-gray-800/50 border-r border-gray-200 dark:border-gray-800 shadow-lg">
           <div className="p-6">
-            <h1 className="text-xl font-black tracking-tight text-[#333333] dark:text-white mb-8">
-              Mentor Dashboard
+            <h1 className="text-xl font-black tracking-tight text-[#333333] dark:text-white mb-6">
+              Coach Dashboard
             </h1>
+            {crmEnabled && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-[#8b5cf6]/10 border border-[#8b5cf6]/20">
+                <p className="text-xs font-semibold text-[#8b5cf6]">CRM mode active</p>
+              </div>
+            )}
             
             <nav className="space-y-2">
               {navItems.map((item) => {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Layout from '@/components/Layout'
+import Link from 'next/link'
 
 interface Booking {
   id: string
@@ -62,29 +64,33 @@ export default function StudentSessions() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-4">
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
+      <Layout variant="landing">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="space-y-4">
+              <div className="h-20 bg-gray-200 rounded"></div>
+              <div className="h-20 bg-gray-200 rounded"></div>
+            </div>
           </div>
         </div>
-      </div>
+      </Layout>
     )
   }
 
   if (!userData) {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Unable to load session data. Please try again.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Layout variant="landing">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
+                Unable to load session data. Please try again.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
     )
   }
 
@@ -209,7 +215,8 @@ export default function StudentSessions() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <Layout variant="landing">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       <div>
         <h1 className="text-3xl font-black tracking-tight text-[#333333] dark:text-white mb-2">
           My Sessions
@@ -312,5 +319,6 @@ export default function StudentSessions() {
         )}
       </div>
     </div>
+    </Layout>
   )
 }

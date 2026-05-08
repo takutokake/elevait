@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { jobId } = body
+  const { jobId, company, role, job_url, company_url } = body
 
   if (!jobId) {
     return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   // Add new job ID
   jobIds.push(jobId)
 
-  // Upsert (insert or update)
+  // Upsert saved_jobs
   const { error } = await supabase
     .from('saved_jobs')
     .upsert({ 
@@ -82,6 +82,29 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[Saved Jobs API] Error saving job:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Auto-create application in pipeline at "Saved" stage (best-effort, non-blocking)
+  if (company && role) {
+    const { data: existingApp } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('company', company)
+      .eq('role', role)
+      .single()
+
+    if (!existingApp) {
+      await supabase.from('applications').insert({
+        user_id: user.id,
+        company,
+        role,
+        stage: 'Saved',
+        source: 'job_board',
+        job_url: job_url || null,
+        company_url: company_url || null,
+      })
+    }
   }
 
   return NextResponse.json({ message: 'Job saved successfully' })

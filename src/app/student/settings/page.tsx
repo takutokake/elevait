@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { uploadAvatar } from '@/lib/avatarUpload'
+import Layout from '@/components/Layout'
 
 interface UserData {
   user: any
@@ -167,31 +168,36 @@ export default function StudentSettings() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
+      <Layout variant="landing">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-96 bg-gray-200 rounded"></div>
+          </div>
         </div>
-      </div>
+      </Layout>
     )
   }
 
   if (!userData) {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
-              Unable to load settings. Please try again.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Layout variant="landing">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-[#333333]/80 dark:text-[#F5F5F5]/80">
+                Unable to load settings. Please try again.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
     )
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <Layout variant="landing">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       <div>
         <h1 className="text-3xl font-black tracking-tight text-[#333333] dark:text-white mb-2">
           Profile Settings
@@ -382,5 +388,6 @@ export default function StudentSettings() {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   )
 }
