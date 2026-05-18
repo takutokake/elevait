@@ -183,12 +183,20 @@ function PipelineTab({ user }: { user: any }) {
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmailEmail?: string | null } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
     fetch('/api/applications').then(r => r.ok ? r.json() : null).then(d => {
       if (d) setApps(d.applications || [])
     }).finally(() => setLoading(false))
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    fetch('/api/gmail/status').then(r => r.ok ? r.json() : null).then(d => { if (d) setGmailStatus(d) })
   }, [user])
 
   const moveApp = useCallback(async (id: string, stage: Application['stage']) => {
@@ -207,6 +215,22 @@ function PipelineTab({ user }: { user: any }) {
     await fetch('/api/applications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) })
     setEditApp(null)
   }, [])
+
+  const handleGmailSync = async () => {
+    setSyncing(true); setSyncMsg('')
+    try {
+      const res = await fetch('/api/gmail/sync', { method: 'POST' })
+      const d = await res.json()
+      if (res.ok) {
+        setSyncMsg(`${d.updated || 0} application${d.updated === 1 ? '' : 's'} updated`)
+        const r = await fetch('/api/applications')
+        const data = await r.json()
+        if (data) setApps(data.applications || [])
+      } else {
+        setSyncMsg(d.error || 'Sync failed')
+      }
+    } finally { setSyncing(false) }
+  }
 
   const displayApps = user ? apps : DEMO_APPS
 
@@ -235,6 +259,30 @@ function PipelineTab({ user }: { user: any }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Gmail banner */}
+      {user && gmailStatus !== null && (
+        gmailStatus.connected ? (
+          <div className="mb-4 flex items-center gap-3 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+            <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+            <p className="flex-1 text-xs text-emerald-700 dark:text-emerald-300 font-medium">Gmail connected{gmailStatus.gmailEmail ? ` · ${gmailStatus.gmailEmail}` : ''}</p>
+            {syncMsg && <span className="text-xs text-emerald-600 dark:text-emerald-400">{syncMsg}</span>}
+            <button onClick={handleGmailSync} disabled={syncing}
+              className="flex-shrink-0 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors">
+              {syncing ? 'Syncing...' : 'Sync emails'}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-4 flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            <p className="flex-1 text-xs text-amber-800 dark:text-amber-200">Connect Gmail to auto-detect interview invites and rejections.</p>
+            <a href="/api/gmail/connect"
+              className="flex-shrink-0 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors">
+              Connect Gmail
+            </a>
+          </div>
+        )
       )}
 
       {/* Header row */}
@@ -718,7 +766,7 @@ function MentorsTab({ user }: { user: any }) {
             return (
               <div key={mentor.id} className="flex flex-col bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 hover:border-[#0ea5e9]/40 hover:shadow-md transition-all">
                 <div className="flex items-start gap-3 mb-3">
-                  <Image src={avatarUrl} alt={mentor.full_name || 'Mentor'} width={44} height={44} className="rounded-full object-cover flex-shrink-0" />
+                  <Image src={avatarUrl} alt={mentor.full_name || 'Mentor'} width={44} height={44} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[#333333] dark:text-white truncate">{mentor.full_name}</p>
                     <p className="text-xs text-gray-500 truncate">{md?.current_title || 'PM'}{md?.current_company ? ` @ ${md.current_company}` : ''}</p>
@@ -756,6 +804,8 @@ function MentorsTab({ user }: { user: any }) {
 // ─── Settings Tab ──────────────────────────────────────────────────────────────
 function SettingsTab({ user, profile }: { user: any; profile: any }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const gmailError = searchParams.get('gmail_error')
   const supabase = getSupabaseBrowserClient()
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; gmailEmail?: string | null } | null>(null)
   const [syncing, setSyncing] = useState(false)
@@ -770,7 +820,18 @@ function SettingsTab({ user, profile }: { user: any; profile: any }) {
   }, [user])
 
   useEffect(() => {
-    if (profile) setForm(prev => ({ ...prev, full_name: profile.full_name || '' }))
+    if (searchParams.get('gmail_connected') === '1' && user) {
+      fetch('/api/gmail/status').then(r => r.ok ? r.json() : null).then(d => { if (d) setGmailStatus(d) })
+    }
+  }, [searchParams, user])
+
+  useEffect(() => {
+    if (profile) setForm(prev => ({
+      ...prev,
+      full_name: profile.full_name || '',
+      looking_for: profile.looking_for || 'internship',
+      target_companies: profile.target_companies || '',
+    }))
   }, [profile])
 
   const handleSync = async () => {
@@ -786,7 +847,14 @@ function SettingsTab({ user, profile }: { user: any; profile: any }) {
     if (!user) return
     setSaving(true); setSavedMsg('')
     try {
-      await supabase.from('profiles').update({ full_name: form.full_name }).eq('id', user.id)
+      const { error } = await supabase.from('profiles').update({
+        full_name: form.full_name,
+        looking_for: form.looking_for,
+        target_companies: form.target_companies,
+      }).eq('id', user.id)
+      if (error) {
+        await supabase.from('profiles').update({ full_name: form.full_name }).eq('id', user.id)
+      }
       setSavedMsg('Saved!')
       setTimeout(() => setSavedMsg(''), 2500)
     } finally { setSaving(false) }
@@ -831,13 +899,6 @@ function SettingsTab({ user, profile }: { user: any; profile: any }) {
               className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-400 cursor-not-allowed" />
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2 bg-[#0ea5e9] hover:bg-[#0284c7] disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-colors">
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {savedMsg && <span className="text-sm text-emerald-500 font-medium">{savedMsg}</span>}
-        </div>
       </div>
 
       {/* Preferences */}
@@ -865,6 +926,13 @@ function SettingsTab({ user, profile }: { user: any; profile: any }) {
             <p className="text-[11px] text-gray-400 mt-1">We&apos;ll highlight coaches and jobs from these companies.</p>
           </div>
         </div>
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2 bg-[#0ea5e9] hover:bg-[#0284c7] disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-colors">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          {savedMsg && <span className="text-sm text-emerald-500 font-medium">{savedMsg}</span>}
+        </div>
       </div>
 
       {/* Gmail Integration */}
@@ -877,18 +945,36 @@ function SettingsTab({ user, profile }: { user: any; profile: any }) {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
               Connected{gmailStatus.gmailEmail ? ` · ${gmailStatus.gmailEmail}` : ''}
             </div>
-            <button onClick={handleSync} disabled={syncing}
-              className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-colors">
-              {syncing ? 'Syncing...' : 'Sync Now'}
-            </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <button onClick={handleSync} disabled={syncing}
+                className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-colors">
+                {syncing ? 'Syncing...' : 'Sync Now'}
+              </button>
+              <a href="/api/gmail/connect"
+                className="text-xs text-gray-400 hover:text-[#0ea5e9] hover:underline transition-colors">
+                Connect a different account
+              </a>
+            </div>
             {syncMsg && <p className="text-xs text-gray-400">{syncMsg}</p>}
           </div>
         ) : (
-          <a href="/api/gmail/connect"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-white hover:border-[#0ea5e9] transition-colors">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 010 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
-            Connect Gmail
-          </a>
+          <div className="space-y-3">
+            {gmailError && (
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                <p className="text-xs text-red-700 dark:text-red-300">
+                  Connection failed (<code className="font-mono">{gmailError}</code>
+                  {searchParams.get('detail') && <> · <code className="font-mono">{searchParams.get('detail')}</code></>}
+                  )
+                </p>
+              </div>
+            )}
+            <a href="/api/gmail/connect"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-white hover:border-[#0ea5e9] transition-colors">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 010 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" /></svg>
+              {gmailError ? 'Try with a different account' : 'Connect Gmail'}
+            </a>
+          </div>
         )}
       </div>
 
@@ -964,8 +1050,8 @@ function AppSidebar({
     <div className="flex flex-col h-full">
       {/* Logo row */}
       <div className="px-5 pt-5 pb-4 flex items-center justify-between flex-shrink-0">
-        <Link href="/" className="text-xl font-black tracking-tight text-gray-900 dark:text-white select-none">
-          eleva<span className="text-[#0ea5e9]">it</span>
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Image src="/images/Elevait_logo.png" alt="Elevait" width={140} height={40} className="h-10 w-auto object-contain" />
         </Link>
         {onClose && (
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -1118,8 +1204,8 @@ function DashboardShell() {
 
         {/* Mobile top bar */}
         <div className="md:hidden sticky top-0 z-40 bg-white dark:bg-[#16242c] border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 h-14 flex-shrink-0">
-          <Link href="/" className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
-            eleva<span className="text-[#0ea5e9]">it</span>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Image src="/images/Elevait_logo.png" alt="Elevait" width={130} height={36} className="h-9 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-2">
             {user ? (
@@ -1140,9 +1226,9 @@ function DashboardShell() {
 
         {/* Page content */}
         <div className="flex-1 px-4 sm:px-6 py-6 pb-24 md:pb-8 min-w-0">
-          <div className="mb-5">
-            <h1 className="text-xl font-black text-gray-900 dark:text-white">{PAGE_META[tab]?.h}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{PAGE_META[tab]?.sub}</p>
+          <div className="mb-6">
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{PAGE_META[tab]?.h}</h1>
+            <p className="text-sm text-gray-400 mt-1 leading-relaxed">{PAGE_META[tab]?.sub}</p>
           </div>
           {tab === 'pipeline' && <PipelineTab user={user} />}
           {tab === 'jobs'     && <JobsTab user={user} />}

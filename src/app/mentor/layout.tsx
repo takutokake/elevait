@@ -242,6 +242,7 @@ export default function MentorLayout({
     { href: '/mentor/sessions', label: 'Sessions' },
     { href: '/mentor/availability', label: 'Availability' },
     { href: '/mentor/settings', label: 'Profile Settings' },
+    { href: '/student/dashboard?tab=pipeline', label: 'My Pipeline' },
   ]
 
   const crmNavItems = [

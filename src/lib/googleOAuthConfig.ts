@@ -11,7 +11,8 @@ export const GOOGLE_OAUTH_SCOPES = {
   PROFILE: 'profile',
   CALENDAR: 'https://www.googleapis.com/auth/calendar',
   CALENDAR_EVENTS: 'https://www.googleapis.com/auth/calendar.events',
-  MEETINGS_SPACE: 'https://www.googleapis.com/auth/meetings.space.created'
+  MEETINGS_SPACE: 'https://www.googleapis.com/auth/meetings.space.created',
+  GMAIL_READONLY: 'https://www.googleapis.com/auth/gmail.readonly',
 }
 
 /**

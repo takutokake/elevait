@@ -68,7 +68,7 @@ function HeroPreview() {
 /* ─────────────────────────────────────────────────────────────
    Product UI Snippets for sticky scroll
 ───────────────────────────────────────────────────────────── */
-function ProductPreview({ index }: { index: number }) {
+function ProductPreview({ index, coaches = [] }: { index: number; coaches?: any[] }) {
   const chrome = (
     <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-100 bg-gray-50/80">
       <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -90,11 +90,9 @@ function ProductPreview({ index }: { index: number }) {
             <div className="w-2 h-2 rounded-full bg-yellow-400" />
             <div className="w-2 h-2 rounded-full bg-green-400" />
           </div>
-          <div className="flex items-center gap-2 mx-auto">
-            <Image src="/images/Elevait_logo.png" alt="Elevait" width={18} height={18} className="h-5 w-auto" />
-            <span className="text-sm font-black text-gray-800">eleva<span className="text-[#0ea5e9]">it</span></span>
+          <div className="flex-1 flex items-center justify-center">
+            <Image src="/images/Elevait_logo.png" alt="Elevait" width={90} height={28} className="h-7 w-auto object-contain" />
           </div>
-          <span className="text-[10px] font-bold text-[#0ea5e9] bg-[#0ea5e9]/10 px-2 py-0.5 rounded-full">Pipeline</span>
         </div>
         {/* Kanban */}
         <div className="p-3 bg-gray-50/60">
@@ -141,12 +139,14 @@ function ProductPreview({ index }: { index: number }) {
         </div>
         <div className="p-3 space-y-2">
           {[
-            { letter: 'G', bg: '#4285F4', co: 'Google',  role: 'Associate PM',  loc: 'New York',  saved: true },
-            { letter: 'S', bg: '#635BFF', co: 'Stripe',   role: 'APM',           loc: 'Remote',    saved: false },
-            { letter: 'F', bg: '#F24E1E', co: 'Figma',    role: 'PM Intern',     loc: 'SF',        saved: false },
+            { domain: 'google.com', co: 'Google',  role: 'Associate PM',  loc: 'New York',  saved: true },
+            { domain: 'stripe.com', co: 'Stripe',   role: 'APM',           loc: 'Remote',    saved: false },
+            { domain: 'figma.com',  co: 'Figma',    role: 'PM Intern',     loc: 'SF',        saved: false },
           ].map((job) => (
             <div key={job.co} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 bg-white">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0" style={{ background: job.bg }}>{job.letter}</div>
+              <div className="w-7 h-7 rounded-lg overflow-hidden border border-gray-100 bg-white flex-shrink-0 flex items-center justify-center">
+                <img src={`https://www.google.com/s2/favicons?domain=${job.domain}&sz=64`} alt={job.co} width={28} height={28} className="w-5 h-5 object-contain" />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-gray-800">{job.role} · {job.co}</p>
                 <p className="text-[9px] text-gray-400">{job.loc}</p>
@@ -172,13 +172,19 @@ function ProductPreview({ index }: { index: number }) {
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">Matched → Google Interview</span>
         </div>
         <div className="p-3 space-y-2">
-          {[
-            { initials: 'MK', color: '#0ea5e9', name: 'Maya K.',   title: 'APM @ Google', free: true,  price: null },
-            { initials: 'JR', color: '#8b5cf6', name: 'Jordan R.', title: 'PM @ Google',  free: false, price: '$50' },
-            { initials: 'AL', color: '#10b981', name: 'Alex L.',   title: 'APM @ Google', free: true,  price: null },
-          ].map((m) => (
+          {(coaches.length >= 3 ? coaches.slice(0, 3).map((c: any) => ({
+            name: c.full_name || 'Coach',
+            title: `${c.mentor_data?.current_title || 'PM'}${c.mentor_data?.current_company ? ' @ ' + c.mentor_data.current_company : ''}`,
+            avatar: c.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.full_name || 'Coach')}&background=0ea5e9&color=fff&size=128`,
+            free: (c.mentor_data?.pricing_model || 'free') === 'free',
+            price: c.mentor_data?.price_cents ? `$${Math.round(c.mentor_data.price_cents / 100)}` : null,
+          })) : [
+            { name: 'Maya K.',   title: 'APM @ Google', avatar: 'https://ui-avatars.com/api/?name=Maya+K&background=0ea5e9&color=fff&size=128', free: true,  price: null },
+            { name: 'Jordan R.', title: 'PM @ Google',  avatar: 'https://ui-avatars.com/api/?name=Jordan+R&background=8b5cf6&color=fff&size=128', free: false, price: '$50' },
+            { name: 'Alex L.',   title: 'APM @ Google', avatar: 'https://ui-avatars.com/api/?name=Alex+L&background=10b981&color=fff&size=128', free: true,  price: null },
+          ]).map((m: any) => (
             <div key={m.name} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 bg-white">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ background: m.color }}>{m.initials}</div>
+              <img src={m.avatar} alt={m.name} width={32} height={32} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-gray-800">{m.name}</p>
                 <p className="text-[9px] text-gray-400">{m.title}</p>
@@ -230,7 +236,7 @@ function ProductPreview({ index }: { index: number }) {
 /* ─────────────────────────────────────────────────────────────
    How it’s Different — Sticky Scroll (Apple-style)
 ───────────────────────────────────────────────────────────── */
-function HowItsDifferentSection() {
+function HowItsDifferentSection({ coaches = [] }: { coaches?: any[] }) {
   const [active, setActive] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -254,25 +260,25 @@ function HowItsDifferentSection() {
     {
       icon: '📋', color: '#0ea5e9', bg: '#EFF9FF', num: '01',
       title: 'Applications are the center',
-      body: 'Every mentor, job, and resource is organized around your applications — not the other way around. Drag cards, update stages, see the whole hunt at a glance.',
+      body: 'Every mentor, job, and resource lives around your applications. Drag cards, update stages, and see your whole hunt at a glance.',
       link: '/student/dashboard?tab=pipeline', linkText: 'Open my pipeline →',
     },
     {
       icon: '🎯', color: '#f97316', bg: '#FFF7ED', num: '02',
       title: 'Jobs flow straight into your tracker',
-      body: 'One click saves a PM role from the job board directly into your pipeline as “Saved.” No copy-pasting, no spreadsheet rows, no lost tabs.',
+      body: 'One click saves a PM role from the job board into your pipeline as “Saved.” No copy pasting, no spreadsheet rows, no lost tabs.',
       link: '/jobs', linkText: 'Browse PM jobs →',
     },
     {
       icon: '🤝', color: '#8b5cf6', bg: '#F5F3FF', num: '03',
       title: 'Mentors matched to your interviews',
-      body: 'When you move a card to Interview, we surface coaches who were recently hired at that exact company — so your prep is always fresh and relevant.',
+      body: 'When you move a card to Interview, we show coaches who were recently hired at that exact company. Your prep stays fresh and relevant.',
       link: '/coaches', linkText: 'Find a coach →',
     },
     {
       icon: '✉️', color: '#10b981', bg: '#ECFDF5', num: '04',
-      title: 'Gmail auto-updates your stages',
-      body: 'Connect Gmail once and we detect recruiter emails — moving cards from Applied → Interview and flagging rejections automatically.',
+      title: 'Gmail keeps your stages updated',
+      body: 'Connect Gmail once and we pick up recruiter emails for you. Cards move from Applied to Interview automatically, and rejections get flagged.',
       link: '/student/dashboard?tab=settings', linkText: 'Set it up →',
     },
   ];
@@ -287,7 +293,7 @@ function HowItsDifferentSection() {
       >
         {/* Top label */}
         <div className="absolute top-7 left-0 right-0 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">How it&apos;s different</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">How it's different</span>
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
@@ -311,7 +317,7 @@ function HowItsDifferentSection() {
 
           {/* Right: product preview (desktop) */}
           <div key={`prev-${active}`} className="hidden lg:block animate-slide-right">
-            <ProductPreview index={active} />
+            <ProductPreview index={active} coaches={coaches} />
           </div>
 
           {/* Mobile dot nav */}
@@ -439,26 +445,33 @@ function JourneySection() {
 ───────────────────────────────────────────────────────────── */
 function CoachCarousel({ coaches }: { coaches: any[] }) {
   if (coaches.length === 0) return null;
-  const companies = coaches
-    .map(c => c.mentor_data?.current_company)
-    .filter(Boolean)
-    .filter((v, i, a) => a.indexOf(v) === i);
-  if (companies.length === 0) return null;
-  const doubled = [...companies, ...companies];
+  const minItems = Math.max(coaches.length, Math.ceil(3000 / 104));
+  const repeats = Math.ceil(minItems / coaches.length);
+  const base = Array.from({ length: repeats }, () => coaches).flat();
+  const doubled = [...base, ...base];
   return (
-    <section className="py-10 bg-gray-50/70 dark:bg-[#0d161b] overflow-hidden">
-      <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-6">
-        Our coaches were recently hired at
+    <section className="py-10 bg-white dark:bg-[#101c22] overflow-hidden border-y border-gray-100 dark:border-gray-800">
+      <p className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-8">
+        Coaches ready to help you land your PM role
       </p>
-      <div className="relative">
-        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50/70 dark:from-[#0d161b] to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50/70 dark:from-[#0d161b] to-transparent z-10 pointer-events-none" />
-        <div className="flex gap-3 animate-marquee" style={{ width: 'max-content' }}>
-          {doubled.map((company, i) => (
-            <span key={i} className="flex items-center px-4 py-2 bg-white dark:bg-[#16242c] rounded-full border border-gray-100 dark:border-gray-800 shadow-sm flex-shrink-0 text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
-              {company}
-            </span>
-          ))}
+      <div className="relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white dark:from-[#101c22] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white dark:from-[#101c22] to-transparent z-10 pointer-events-none" />
+        <div className="flex gap-8 animate-marquee-slow" style={{ width: 'max-content' }}>
+          {doubled.map((coach, i) => {
+            const name = coach.full_name || 'Coach';
+            const company = coach.mentor_data?.current_company || coach.mentor_data?.current_title || '';
+            const avatar = coach.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0ea5e9&color=fff&size=128`;
+            return (
+              <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0" style={{ width: 72 }}>
+                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 shadow-sm flex-shrink-0">
+                  <img src={avatar} alt={name} width={48} height={48} className="w-full h-full object-cover" />
+                </div>
+                <p className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 text-center leading-tight">{name.split(' ')[0]}</p>
+                <p className="text-[9px] text-gray-400 text-center leading-tight">{company}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -487,8 +500,8 @@ export default function Home() {
   // Fetch featured coaches
   useEffect(() => {
     fetch('/api/coaches?limit=16').then(r => r.ok ? r.json() : null).then(data => {
-      if (data?.coaches) {
-        const shuffled = [...data.coaches].sort(() => 0.5 - Math.random());
+      if (data?.mentors) {
+        const shuffled = [...data.mentors].sort(() => 0.5 - Math.random());
         setFeaturedMentors(shuffled.slice(0, 12));
       }
     }).catch(() => {});
@@ -577,7 +590,7 @@ export default function Home() {
             <div className="flex gap-6 text-sm text-gray-400 flex-wrap">
               <span>✓ Free peer coaching</span>
               <span>✓ No credit card</span>
-              <span>✓ 500+ PMs hired</span>
+              <span>✓ 100+ PMs hired</span>
             </div>
           </div>
           {/* Right: animated preview */}
@@ -587,11 +600,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── HOW IT’S DIFFERENT ─────────────────────────────────── */}
-      <HowItsDifferentSection />
-
       {/* ── COACH CAROUSEL ────────────────────────────────────── */}
       <CoachCarousel coaches={featuredMentors} />
+
+      {/* ── HOW IT'S DIFFERENT ─────────────────────────────────── */}
+      <HowItsDifferentSection coaches={featuredMentors} />
 
       {/* ── JOURNEY ───────────────────────────────────────────── */}
       <JourneySection />
@@ -662,7 +675,7 @@ export default function Home() {
       <section className="py-20 sm:py-24 bg-gray-50/60 dark:bg-[#0d161b]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white text-center mb-12">
-            Join 500+ PMs who got coached (and hired).
+            Join 100+ PMs who got coached and hired.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (

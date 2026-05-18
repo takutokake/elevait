@@ -1,9 +1,9 @@
 import { getSupabaseRouteHandlerClient } from '@/lib/supabaseServer'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await getSupabaseRouteHandlerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -12,7 +12,8 @@ export async function GET() {
   }
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/callback`
+  const origin = new URL(request.url).origin
+  const redirectUri = `${origin}/api/gmail/callback`
 
   if (!clientId) {
     return NextResponse.json({ error: 'Google OAuth not configured' }, { status: 500 })
@@ -26,7 +27,7 @@ export async function GET() {
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', SCOPES.join(' '))
   url.searchParams.set('access_type', 'offline')
-  url.searchParams.set('prompt', 'consent')
+  url.searchParams.set('prompt', 'select_account consent')
   url.searchParams.set('state', state)
 
   return NextResponse.redirect(url.toString())

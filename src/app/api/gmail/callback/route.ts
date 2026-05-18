@@ -1,4 +1,4 @@
-import { getSupabaseRouteHandlerClient } from '@/lib/supabaseServer'
+import { getSupabaseAdminClient } from '@/lib/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const baseUrl = new URL(request.url).origin
 
   if (error || !code) {
     return NextResponse.redirect(`${baseUrl}/student/dashboard?tab=settings&gmail_error=${error || 'no_code'}`)
@@ -49,8 +49,11 @@ export async function GET(request: NextRequest) {
     })
     const userInfo = await userInfoRes.json()
 
-    const supabase = await getSupabaseRouteHandlerClient()
-    await supabase.from('user_oauth_tokens').upsert({
+    const supabase = getSupabaseAdminClient()
+
+    await supabase.from('user_oauth_tokens').delete().eq('user_id', userId).eq('provider', 'gmail')
+
+    const { error: storeErr } = await supabase.from('user_oauth_tokens').insert({
       user_id: userId,
       provider: 'gmail',
       access_token: tokens.access_token,
@@ -61,7 +64,13 @@ export async function GET(request: NextRequest) {
       gmail_email: userInfo.email || null,
       provider_scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,provider' })
+    })
+
+    if (storeErr) {
+      console.error('[Gmail callback] Store error:', storeErr)
+      const detail = encodeURIComponent(storeErr.message || storeErr.code || 'unknown')
+      return NextResponse.redirect(`${baseUrl}/student/dashboard?tab=settings&gmail_error=store_failed&detail=${detail}`)
+    }
 
     return NextResponse.redirect(`${baseUrl}/student/dashboard?tab=settings&gmail_connected=1`)
   } catch (err) {

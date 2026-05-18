@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Link from "next/link";
 import { MentorWithDetails } from "@/types/mentor";
 import { getMentorInitials } from "@/lib/mentorUtils";
@@ -8,6 +9,7 @@ interface CoachCardProps {
 }
 
 export default function CoachCard({ mentor }: CoachCardProps) {
+  const [imgError, setImgError] = useState(false)
   const initials = getMentorInitials(mentor.full_name);
   const displayName = mentor.full_name || 'Anonymous Coach';
   const displayTitle = mentor.mentor_data?.current_title || 'Product Manager';
@@ -65,17 +67,12 @@ export default function CoachCard({ mentor }: CoachCardProps) {
       <div className="p-6 flex flex-col h-full">
         <div className="flex items-start gap-4 mb-4 pr-8">
           <div className="relative">
-            {mentor.avatar_url ? (
-              <img 
-                className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-[#16242c] shadow-md" 
-                alt={`Portrait of ${displayName}`} 
-                src={avatarUrl}
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0ea5e9] to-[#8b5cf6] flex items-center justify-center text-white text-lg font-bold border-2 border-white dark:border-[#16242c] shadow-md">
-                {initials}
-              </div>
-            )}
+            <img
+              className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-[#16242c] shadow-md"
+              alt={`Portrait of ${displayName}`}
+              src={imgError ? `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0ea5e9&color=fff&size=128` : avatarUrl}
+              onError={() => setImgError(true)}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-bold text-[#333333] dark:text-white group-hover:text-[#0ea5e9] transition-colors truncate">{displayName}</h3>
