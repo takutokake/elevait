@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { generateRecommendation } from '@/lib/emailIntelExtractor'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient'
@@ -21,6 +22,10 @@ interface Application {
   job_url?: string | null
   source?: string
   created_at: string
+  interview_date?: string | null
+  interview_type?: string | null
+  action_items?: Array<{ text: string; due?: string | null }> | null
+  ai_summary?: string | null
 }
 
 interface Job {
@@ -367,6 +372,11 @@ function PipelineTab({ user }: { user: any }) {
                         {app.next_action}
                       </p>
                     )}
+                    {app.interview_date && (
+                      <p className="mt-1 text-[11px] text-amber-500 truncate flex items-center gap-1">
+                        📅 {new Date(app.interview_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                     {app.source === 'job_board' && (
                       <span className="mt-1.5 inline-block text-[9px] font-bold uppercase tracking-wide text-[#0ea5e9] bg-[#0ea5e9]/10 px-1.5 py-0.5 rounded">Job board</span>
                     )}
@@ -437,6 +447,31 @@ function EditApplicationDrawer({ app, onClose, onSave, onDelete }: { app: Applic
               {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+          {app.ai_summary && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-3 space-y-2">
+              <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">✨ AI Assistant</p>
+              <p className="text-xs text-blue-900 dark:text-blue-100 leading-relaxed">{app.ai_summary}</p>
+              {(app.interview_date || app.interview_type) && (
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  📅{app.interview_date ? ` ${new Date(app.interview_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  {app.interview_type ? ` · ${app.interview_type.replace(/_/g, ' ')}` : ''}
+                </p>
+              )}
+              {app.action_items && app.action_items.length > 0 && (
+                <ul className="space-y-1">
+                  {app.action_items.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-blue-800 dark:text-blue-200">
+                      <input type="checkbox" className="mt-0.5 flex-shrink-0 accent-blue-500" readOnly />
+                      <span>{item.text}{item.due ? ` (by ${item.due})` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-[11px] text-blue-500 dark:text-blue-400 italic leading-relaxed">
+                {generateRecommendation(app.stage, app.interview_type ?? null, app.company, app.interview_date ?? null, app.deadline ?? null)}
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-xs font-semibold text-[#333333]/60 dark:text-[#F5F5F5]/60 uppercase tracking-wide mb-1 block">Next Action</label>
             <input value={form.next_action} onChange={e => setForm(p => ({ ...p, next_action: e.target.value }))} placeholder="e.g. Send thank you email" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#333333] dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]" />

@@ -5,9 +5,140 @@
 //
 // Deploy: supabase functions deploy pipeline-sync
 // Secrets: supabase secrets set GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=...
+//          supabase secrets set GOOGLE_AI_API_KEY=...
 //   (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+// ─── Email body extraction ───────────────────────────────────────────────────
+
+function extractBodyText(payload: any): string {
+  function decode(data: string): string {
+    try {
+      const base64 = data.replace(/-/g, '+').replace(/_/g, '/')
+      const binaryStr = atob(base64)
+      const bytes = new Uint8Array(binaryStr.length)
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
+      return new TextDecoder('utf-8').decode(bytes)
+    } catch {
+      return ''
+    }
+  }
+
+  function stripHtml(html: string): string {
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+
+  function walk(part: any): { plain: string | null; html: string | null } {
+    if (!part) return { plain: null, html: null }
+    if (part.mimeType === 'text/plain' && part.body?.data) return { plain: decode(part.body.data), html: null }
+    if (part.mimeType === 'text/html' && part.body?.data) return { plain: null, html: decode(part.body.data) }
+    if (Array.isArray(part.parts)) {
+      let plain: string | null = null
+      let html: string | null = null
+      for (const child of part.parts) {
+        const r = walk(child)
+        if (r.plain && !plain) plain = r.plain
+        if (r.html && !html) html = r.html
+      }
+      return { plain, html }
+    }
+    return { plain: null, html: null }
+  }
+
+  const { plain, html } = walk(payload)
+  const text = plain || (html ? stripHtml(html) : '')
+  return text.slice(0, 1500)
+}
+
+// ─── Gemini extraction via REST API ─────────────────────────────────────────
+
+interface EmailIntel {
+  stage: string | null
+  role: string | null
+  company: string | null
+  interview_date: string | null
+  interview_type: string | null
+  deadline: string | null
+  action_items: Array<{ text: string; due: string | null }>
+  summary: string | null
+  confidence: 'high' | 'medium' | 'low'
+}
+
+async function extractEmailIntelDeno(params: {
+  subject: string
+  body: string
+  from: string
+  receivedDate: string
+  apiKey: string
+}): Promise<EmailIntel | null> {
+  try {
+    const schema = {
+      type: 'OBJECT',
+      properties: {
+        stage: { type: 'STRING', format: 'enum', nullable: true, enum: ['Applied', 'Interview', 'Offer', 'Rejected'], description: 'Set Rejected ONLY if explicitly rejected.' },
+        role: { type: 'STRING', nullable: true },
+        company: { type: 'STRING', nullable: true },
+        interview_date: { type: 'STRING', nullable: true, description: 'ISO8601 datetime. Only set if specific day AND time mentioned.' },
+        interview_type: { type: 'STRING', format: 'enum', nullable: true, enum: ['phone_screen', 'technical', 'hiring_manager', 'panel', 'onsite', 'take_home'] },
+        deadline: { type: 'STRING', nullable: true, description: 'ISO8601 date for application or response deadline.' },
+        action_items: {
+          type: 'ARRAY',
+          description: 'Up to 3 candidate-actionable items.',
+          items: {
+            type: 'OBJECT',
+            properties: { text: { type: 'STRING' }, due: { type: 'STRING', nullable: true } },
+            required: ['text'],
+          },
+        },
+        summary: { type: 'STRING', nullable: true, description: 'Max 20-word summary addressed to the candidate.' },
+        confidence: { type: 'STRING', format: 'enum', enum: ['high', 'medium', 'low'], description: 'Set low if ambiguous or not clearly a job application.' },
+      },
+      required: ['confidence', 'action_items'],
+    }
+
+    const prompt = `You are an assistant that extracts structured information from job application emails.
+
+Email details:
+From: ${params.from}
+Date: ${params.receivedDate}
+Subject: ${params.subject}
+Body (first 1500 chars):
+${params.body}
+
+Rules:
+- stage: Set to "Rejected" ONLY if the email explicitly rejects the candidate. Set to "Interview" ONLY if the email is personally scheduling/inviting the candidate to an interview, phone screen, or technical assessment for a specific role — NOT for general events, webinars, or networking sessions. Set to "Offer" only if a formal offer is extended. Set to "Applied" if it is an application confirmation. Leave null if unclear.
+- interview_date: Only set if a specific day AND time are mentioned for a personal interview. Use ISO8601 format.
+- action_items: Only include items the CANDIDATE must act on. Max 3.
+- confidence: Set to "low" if the email is: a company event invitation, career fair, open house, webinar, networking event, newsletter, promotional email, or not clearly about a specific personal job application. Also set to "low" if the email addresses multiple recipients or uses generic language like "check out", "join us", "upcoming events".
+- summary: Address the candidate directly. Max 20 words.
+
+Extract the information now.`
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${params.apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
+        }),
+      },
+    )
+
+    const data = await res.json()
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) return null
+
+    const parsed = JSON.parse(text) as EmailIntel
+    if (!Array.isArray(parsed.action_items)) parsed.action_items = []
+    parsed.action_items = parsed.action_items.slice(0, 3)
+    return parsed
+  } catch {
+    return null
+  }
+}
 
 // ─── Stage classification ────────────────────────────────────────────────────
 
@@ -114,6 +245,7 @@ async function syncUserGmail(
   supabase: any,
   userId: string,
   accessToken: string,
+  googleAiApiKey: string,
 ): Promise<{ processed: number; updated: number; total: number }> {
   const query = [
     '(',
@@ -133,70 +265,142 @@ async function syncUserGmail(
   const listData = await listRes.json()
   const messages: { id: string }[] = listData.messages || []
 
+  const batch = messages.slice(0, 50)
+
+  // Pre-fetch already-processed message IDs
+  const batchIds = batch.map((m) => m.id)
+  const { data: existingEvents } = await supabase
+    .from('application_email_events')
+    .select('gmail_message_id')
+    .in('gmail_message_id', batchIds)
+    .eq('user_id', userId)
+  // deno-lint-ignore no-explicit-any
+  const processedIds = new Set(existingEvents?.map((e: any) => e.gmail_message_id) || [])
+
   const { data: apps } = await supabase
     .from('applications')
-    .select('id, company, stage')
+    .select('id, company, stage, next_action_source')
     .eq('user_id', userId)
 
-  const appMap = new Map<string, { id: string; stage: string }>()
-  apps?.forEach((a: { company: string; id: string; stage: string }) =>
-    appMap.set(a.company.toLowerCase(), { id: a.id, stage: a.stage }),
-  )
+  const appMap = new Map<string, { id: string; stage: string; next_action_source?: string | null }>()
+  // deno-lint-ignore no-explicit-any
+  apps?.forEach((a: any) => appMap.set(a.company.toLowerCase(), { id: a.id, stage: a.stage, next_action_source: a.next_action_source }))
 
   let processed = 0
   let updated = 0
   const STAGE_ORDER = ['Saved', 'Applied', 'Interview', 'Offer', 'Rejected']
 
-  for (const msg of messages.slice(0, 50)) {
+  for (const msg of batch) {
     try {
+      if (processedIds.has(msg.id)) continue
+
       const detailRes = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       )
       const detail = await detailRes.json()
-      // deno-lint-ignore no-explicit-any
       const headers: { name: string; value: string }[] = detail.payload?.headers || []
       const subject = headers.find((h) => h.name === 'Subject')?.value || ''
       const from = headers.find((h) => h.name === 'From')?.value || ''
+      const threadId: string = detail.threadId || ''
+      const internalDate: string = detail.internalDate || String(Date.now())
       const snippet: string = detail.snippet || ''
 
-      const newStage = classifyEmail(subject, snippet)
+      const body = extractBodyText(detail.payload)
+      const receivedDate = new Date(Number(internalDate)).toISOString()
+
+      const intel = googleAiApiKey
+        ? await extractEmailIntelDeno({ subject, body, from, receivedDate, apiKey: googleAiApiKey })
+        : null
+
+      // Use Gemini result when confident; fall back to regex
+      const useIntel = intel && intel.confidence !== 'low'
+      const newStage = useIntel && intel.stage ? intel.stage : classifyEmail(subject, snippet)
       if (!newStage) continue
 
-      const company = extractCompany(from, subject)
+      const company = useIntel && intel.company ? intel.company : extractCompany(from, subject)
       if (!company) continue
 
       const existing = appMap.get(company.toLowerCase())
       processed++
 
+      let applicationId: string | null = null
+
       if (existing) {
         const currentIdx = STAGE_ORDER.indexOf(existing.stage)
         const newIdx = STAGE_ORDER.indexOf(newStage)
         if (newIdx > currentIdx || newStage === 'Rejected') {
-          await supabase
-            .from('applications')
-            .update({ stage: newStage, updated_at: new Date().toISOString() })
-            .eq('id', existing.id)
+          // deno-lint-ignore no-explicit-any
+          const updateData: any = {
+            stage: newStage,
+            interview_date: intel?.interview_date ?? null,
+            interview_type: intel?.interview_type ?? null,
+            action_items: intel?.action_items ?? [],
+            ai_summary: intel?.summary ?? null,
+            ai_confidence: intel?.confidence ?? null,
+            last_email_at: receivedDate,
+            updated_at: new Date().toISOString(),
+          }
+          if (existing.next_action_source !== 'manual') {
+            updateData.next_action = intel?.summary ?? null
+            updateData.next_action_source = 'auto'
+          }
+          await supabase.from('applications').update(updateData).eq('id', existing.id)
+          applicationId = existing.id
           updated++
+        } else {
+          applicationId = existing.id
         }
       } else {
+        const role = useIntel && intel.role ? intel.role : 'Product Manager'
         const { data: inserted, error: insertErr } = await supabase
           .from('applications')
           .insert({
             user_id: userId,
             company,
-            role: 'Product Manager',
+            role,
             stage: newStage,
             source: 'gmail',
             bg_color: '#0ea5e9',
+            interview_date: intel?.interview_date ?? null,
+            interview_type: intel?.interview_type ?? null,
+            action_items: intel?.action_items ?? [],
+            ai_summary: intel?.summary ?? null,
+            ai_confidence: intel?.confidence ?? null,
+            last_email_at: receivedDate,
+            next_action_source: 'auto',
+            next_action: intel?.summary ?? null,
             updated_at: new Date().toISOString(),
           })
           .select('id')
           .single()
         if (!insertErr && inserted) {
-          appMap.set(company.toLowerCase(), { id: inserted.id, stage: newStage })
+          appMap.set(company.toLowerCase(), { id: inserted.id, stage: newStage, next_action_source: 'auto' })
+          applicationId = inserted.id
           updated++
         }
+      }
+
+      if (applicationId) {
+        await supabase.from('application_email_events').upsert(
+          {
+            application_id: applicationId,
+            user_id: userId,
+            gmail_message_id: msg.id,
+            gmail_thread_id: threadId,
+            received_at: receivedDate,
+            subject,
+            from_address: from,
+            extracted_stage: newStage,
+            extracted_role: intel?.role ?? null,
+            extracted_interview_date: intel?.interview_date ?? null,
+            extracted_interview_type: intel?.interview_type ?? null,
+            extracted_action_items: intel?.action_items ?? null,
+            ai_summary: intel?.summary ?? null,
+            ai_confidence: intel?.confidence ?? null,
+          },
+          { onConflict: 'gmail_message_id', ignoreDuplicates: true },
+        )
       }
     } catch {
       // skip individual message errors
@@ -231,6 +435,7 @@ Deno.serve(async (req: Request) => {
 
   const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID') || ''
   const googleClientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') || ''
+  const googleAiApiKey = Deno.env.get('GOOGLE_AI_API_KEY') || ''
 
   // Fetch all users with a connected Gmail token
   const { data: tokenRows, error: fetchErr } = await supabase
@@ -285,7 +490,7 @@ Deno.serve(async (req: Request) => {
           .eq('provider', 'gmail')
       }
 
-      const result = await syncUserGmail(supabase, row.user_id, accessToken)
+      const result = await syncUserGmail(supabase, row.user_id, accessToken, googleAiApiKey)
       results.push({ user_id: row.user_id, ...result })
 
       // Small delay between users to avoid Gmail API rate limits

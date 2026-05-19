@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', SCOPES.join(' '))
   url.searchParams.set('access_type', 'offline')
-  url.searchParams.set('prompt', 'select_account consent')
+  url.searchParams.set('prompt', 'select_account')
   url.searchParams.set('state', state)
 
   return NextResponse.redirect(url.toString())

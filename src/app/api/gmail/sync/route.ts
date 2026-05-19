@@ -1,6 +1,7 @@
 import { getSupabaseRouteHandlerClient } from '@/lib/supabaseServer'
 import { NextResponse } from 'next/server'
 import { classifyEmail, extractCompany, STAGE_ORDER, GMAIL_QUERY } from '@/lib/gmailSyncHelpers'
+import { extractBodyText, extractEmailIntel } from '@/lib/emailIntelExtractor'
 
 export async function POST() {
   const supabase = await getSupabaseRouteHandlerClient()
@@ -58,64 +59,136 @@ export async function POST() {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
     const listData = await listRes.json()
-    const messages = listData.messages || []
+    const messages: { id: string }[] = listData.messages || []
+
+    const batch = messages.slice(0, 50)
+
+    // Pre-fetch already-processed message IDs to skip duplicates
+    const batchIds = batch.map(m => m.id)
+    const { data: existingEvents } = await supabase
+      .from('application_email_events')
+      .select('gmail_message_id')
+      .in('gmail_message_id', batchIds)
+      .eq('user_id', user.id)
+    const processedIds = new Set(existingEvents?.map((e: any) => e.gmail_message_id) || [])
 
     const { data: apps } = await supabase
       .from('applications')
-      .select('id, company, stage')
+      .select('id, company, stage, next_action_source')
       .eq('user_id', user.id)
 
-    const appMap = new Map<string, { id: string; stage: string }>()
-    apps?.forEach(a => appMap.set(a.company.toLowerCase(), { id: a.id, stage: a.stage }))
+    const appMap = new Map<string, { id: string; stage: string; next_action_source?: string | null }>()
+    apps?.forEach(a => appMap.set(a.company.toLowerCase(), { id: a.id, stage: a.stage, next_action_source: a.next_action_source }))
 
     let processed = 0
     let updated = 0
 
-    for (const msg of messages.slice(0, 50)) {
+    for (const msg of batch) {
       try {
+        if (processedIds.has(msg.id)) continue
+
         const detailRes = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         )
         const detail = await detailRes.json()
-        const headers = detail.payload?.headers || []
-        const subject = headers.find((h: any) => h.name === 'Subject')?.value || ''
-        const from = headers.find((h: any) => h.name === 'From')?.value || ''
-        const snippet = detail.snippet || ''
+        const headers: { name: string; value: string }[] = detail.payload?.headers || []
+        const subject = headers.find(h => h.name === 'Subject')?.value || ''
+        const from = headers.find(h => h.name === 'From')?.value || ''
+        const threadId: string = detail.threadId || ''
+        const internalDate: string = detail.internalDate || String(Date.now())
+        const snippet: string = detail.snippet || ''
 
-        const newStage = classifyEmail(subject, snippet)
+        const body = extractBodyText(detail.payload)
+        const receivedDate = new Date(Number(internalDate)).toISOString()
+
+        const intel = await extractEmailIntel({ subject, body, from, receivedDate })
+
+        // Use Gemini result when confident; fall back to regex
+        const useIntel = intel && intel.confidence !== 'low'
+        const newStage = useIntel && intel.stage ? intel.stage : classifyEmail(subject, snippet)
         if (!newStage) continue
 
-        const company = extractCompany(from, subject)
+        const company = (useIntel && intel.company) ? intel.company : extractCompany(from, subject)
         if (!company) continue
 
         const existing = appMap.get(company.toLowerCase())
         processed++
 
+        let applicationId: string | null = null
+
         if (existing) {
           const currentIdx = STAGE_ORDER.indexOf(existing.stage)
           const newIdx = STAGE_ORDER.indexOf(newStage)
           if (newIdx > currentIdx || newStage === 'Rejected') {
-            await supabase.from('applications').update({
+            const updateData: Record<string, unknown> = {
               stage: newStage,
+              interview_date: intel?.interview_date ?? null,
+              interview_type: intel?.interview_type ?? null,
+              action_items: intel?.action_items ?? [],
+              ai_summary: intel?.summary ?? null,
+              ai_confidence: intel?.confidence ?? null,
+              last_email_at: receivedDate,
               updated_at: new Date().toISOString(),
-            }).eq('id', existing.id)
+            }
+            if (existing.next_action_source !== 'manual') {
+              updateData.next_action = intel?.summary ?? null
+              updateData.next_action_source = 'auto'
+            }
+            await supabase.from('applications').update(updateData).eq('id', existing.id)
+            applicationId = existing.id
             updated++
+          } else {
+            applicationId = existing.id
           }
         } else {
-          const { data: inserted, error: insertErr } = await supabase.from('applications').insert({
+          const role = (useIntel && intel.role) ? intel.role : 'Product Manager'
+          const insertData: Record<string, unknown> = {
             user_id: user.id,
             company,
-            role: 'Product Manager',
+            role,
             stage: newStage,
             source: 'gmail',
             bg_color: '#0ea5e9',
+            interview_date: intel?.interview_date ?? null,
+            interview_type: intel?.interview_type ?? null,
+            action_items: intel?.action_items ?? [],
+            ai_summary: intel?.summary ?? null,
+            ai_confidence: intel?.confidence ?? null,
+            last_email_at: receivedDate,
+            next_action_source: 'auto',
+            next_action: intel?.summary ?? null,
             updated_at: new Date().toISOString(),
-          }).select('id').single()
+          }
+          const { data: inserted, error: insertErr } = await supabase
+            .from('applications')
+            .insert(insertData)
+            .select('id')
+            .single()
           if (!insertErr && inserted) {
-            appMap.set(company.toLowerCase(), { id: inserted.id, stage: newStage })
+            appMap.set(company.toLowerCase(), { id: inserted.id, stage: newStage, next_action_source: 'auto' })
+            applicationId = inserted.id
             updated++
           }
+        }
+
+        if (applicationId) {
+          await supabase.from('application_email_events').upsert({
+            application_id: applicationId,
+            user_id: user.id,
+            gmail_message_id: msg.id,
+            gmail_thread_id: threadId,
+            received_at: receivedDate,
+            subject,
+            from_address: from,
+            extracted_stage: newStage,
+            extracted_role: intel?.role ?? null,
+            extracted_interview_date: intel?.interview_date ?? null,
+            extracted_interview_type: intel?.interview_type ?? null,
+            extracted_action_items: intel?.action_items ?? null,
+            ai_summary: intel?.summary ?? null,
+            ai_confidence: intel?.confidence ?? null,
+          }, { onConflict: 'gmail_message_id', ignoreDuplicates: true })
         }
       } catch { /* skip individual message errors */ }
     }

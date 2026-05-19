@@ -29,12 +29,13 @@ export const STAGE_PATTERNS: { stage: string; patterns: RegExp[] }[] = [
       /coding.*challenge/i, /technical.*challenge/i, /technical.*assessment/i,
       /online.*assessment/i, /virtual.*assessment/i,
       /case study/i, /next step/i, /next round/i, /advance.*round/i,
-      /move.*forward/i, /moving.*forward/i, /invite you to/i,
-      /as a next step/i, /as the next step/i, /we.*invite/i,
-      /we.*like to schedule/i, /would like to schedule/i,
-      /assignment/i, /assessment/i, /we.*like to invite/i,
-      /follow.?up.*call/i, /virtual.*interview/i, /onsite/i,
-      /video.*call/i, /zoom.*interview/i, /meet.*team/i,
+      /move.*forward/i, /moving.*forward/i,
+      /invite you to (interview|schedule|meet|chat|discuss|connect)/i,
+      /as a next step/i, /as the next step/i,
+      /we.*like to (schedule|invite you)/i, /would like to schedule/i,
+      /(?:coding|take.?home|written|skills?)\s+assignment/i,
+      /follow.?up.*call/i, /virtual.*interview/i, /onsite interview/i,
+      /video.*interview/i, /zoom.*interview/i,
       /we.*move.*process/i, /continue.*process/i, /progress.*next/i,
     ],
   },
@@ -48,6 +49,24 @@ export const STAGE_PATTERNS: { stage: string; patterns: RegExp[] }[] = [
       /application.*under consideration/i, /application.*confirmed/i,
     ],
   },
+]
+
+export const EXCLUSION_PATTERNS: RegExp[] = [
+  /upcoming events?/i,
+  /check out.*events?/i,
+  /career fair/i,
+  /networking event/i,
+  /webinar/i,
+  /save the date/i,
+  /\brsvp\b/i,
+  /register.*(?:event|session|webinar)/i,
+  /join us (?:at|for) (?:our|the)/i,
+  /we.?re hosting/i,
+  /info(?:rmation)?\s+session(?!.*interview)/i,
+  /recruiting event/i,
+  /campus event/i,
+  /open house/i,
+  /hiring event/i,
 ]
 
 export const BLOCKED_DOMAINS = new Set([
@@ -81,6 +100,7 @@ export const GMAIL_QUERY = [
 
 export function classifyEmail(subject: string, snippet: string): string | null {
   const text = `${subject} ${snippet}`
+  if (EXCLUSION_PATTERNS.some(p => p.test(text))) return null
   for (const { stage, patterns } of STAGE_PATTERNS) {
     if (patterns.some(p => p.test(text))) return stage
   }
