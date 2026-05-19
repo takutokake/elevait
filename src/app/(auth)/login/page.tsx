@@ -80,10 +80,11 @@ function LoginForm() {
     try {
       const supabase = getSupabaseBrowserClient()
       
-      // Include returnUrl in the callback URL if present
-      const callbackUrl = returnUrl 
-        ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
-        : `${window.location.origin}/auth/callback`
+      // Point to the server-side route handler so the PKCE code exchange
+      // happens on the server (avoids browser-side rate limiting).
+      const callbackUrl = returnUrl
+        ? `${window.location.origin}/api/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
+        : `${window.location.origin}/api/auth/callback`
       
       // Capture Google login attempt
       posthog.capture('user_logged_in', {

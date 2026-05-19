@@ -10,13 +10,21 @@ function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('returnUrl')
+  const code = searchParams.get('code')
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
         console.log('[Callback] Starting auth callback...', returnUrl ? `returnUrl: ${returnUrl}` : '')
         const supabase = getSupabaseBrowserClient()
-        
+
+        // Note: the Supabase GoTrueClient automatically exchanges the PKCE code
+        // during _initialize() → _getSessionFromURL() when it detects ?code= in
+        // the URL. We must NOT call exchangeCodeForSession() explicitly here —
+        // doing so makes a second request to /auth/v1/token?grant_type=pkce with
+        // the same code, hitting the rate limit. getUser() below already waits
+        // for initialization (and thus the auto-exchange) to finish.
+
         // Store OAuth tokens if this was a Google sign-in
         const { success, error: oauthError } = await storeOAuthTokens()
         console.log('[Callback] OAuth token storage:', success ? 'Success' : `Failed: ${oauthError}`)

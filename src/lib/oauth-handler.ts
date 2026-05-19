@@ -97,6 +97,54 @@ export async function storeOAuthTokens(): Promise<{ success: boolean; error?: st
     }
 
     console.log('[OAuth Handler] Successfully stored OAuth tokens')
+
+    // Auto-register Gmail using the same Google token so users don't need a
+    // separate connect step.  The login page always requests gmail.readonly,
+    // so provider_token already carries that scope.
+    try {
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${provider_token}` },
+      })
+
+      if (userInfoRes.ok) {
+        const userInfo = await userInfoRes.json()
+        const gmailEmail = userInfo.email || session.user.email || null
+
+        const { data: existingGmail } = await supabase
+          .from('user_oauth_tokens')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('provider', 'gmail')
+          .limit(1)
+
+        const gmailData = {
+          user_id: session.user.id,
+          provider: 'gmail',
+          access_token: provider_token,
+          refresh_token: provider_refresh_token || null,
+          expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+          gmail_email: gmailEmail,
+          provider_scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+          updated_at: new Date().toISOString(),
+        }
+
+        if (existingGmail && existingGmail.length > 0) {
+          await supabase
+            .from('user_oauth_tokens')
+            .update(gmailData)
+            .eq('id', existingGmail[0].id)
+        } else {
+          await supabase
+            .from('user_oauth_tokens')
+            .insert(gmailData)
+        }
+
+        console.log('[OAuth Handler] Auto-registered Gmail for:', gmailEmail)
+      }
+    } catch (gmailErr) {
+      console.error('[OAuth Handler] Gmail auto-registration failed (non-fatal):', gmailErr)
+    }
+
     return { success: true }
   } catch (error) {
     console.error('[OAuth Handler] Unexpected error storing OAuth tokens:', error)
